@@ -1,75 +1,77 @@
-const STORAGE_KEY = "braves-imperialism-tracker-v1";
+const STORAGE_KEY = "braves-imperialism-tracker-v2";
 
-const defaultState = {
-  roster: {
-    lineup: [
-      { id: makeId(), name: "Drake Baldwin", slot: "C", tc: "MLB" },
-      { id: makeId(), name: "Matt Olson", slot: "1B", tc: "MLB" },
-      { id: makeId(), name: "Ozzie Albies", slot: "2B", tc: "MLB" },
-      { id: makeId(), name: "Austin Riley", slot: "3B", tc: "MLB" },
-      { id: makeId(), name: "Bobby Witt Jr.", slot: "SS", tc: "MLB" },
-      { id: makeId(), name: "Mike Yastrzemski", slot: "LF", tc: "MLB" },
-      { id: makeId(), name: "Michael Harris II", slot: "CF", tc: "MLB" },
-      { id: makeId(), name: "Ronald Acuña Jr.", slot: "RF", tc: "MLB" }
-    ],
-    bench: [
-      { id: makeId(), name: "Jonah Heim", slot: "C", tc: "MLB" },
-      { id: makeId(), name: "Dominic Smith", slot: "DH/1B", tc: "MLB" },
-      { id: makeId(), name: "Mauricio Dubón", slot: "UTIL", tc: "MLB" },
-      { id: makeId(), name: "Jorge Mateo", slot: "INF", tc: "MLB" },
-      { id: makeId(), name: "Eli White", slot: "OF", tc: "MLB" }
-    ],
-    rotation: [
-      { id: makeId(), name: "Chris Sale", slot: "SP1", tc: "MLB" },
-      { id: makeId(), name: "Jose Soriano", slot: "SP2", tc: "MLB" },
-      { id: makeId(), name: "Reynaldo Lopez", slot: "SP3", tc: "MLB" },
-      { id: makeId(), name: "Luis Severino", slot: "SP4", tc: "MLB" },
-      { id: makeId(), name: "Bryce Elder", slot: "SP5", tc: "MLB" }
-    ],
-    bullpen: [
-      { id: makeId(), name: "Robert Suarez", slot: "CL", tc: "MLB" },
-      { id: makeId(), name: "Raisel Iglesias", slot: "SU", tc: "MLB" },
-      { id: makeId(), name: "Aaron Bummer", slot: "LHP", tc: "MLB" },
-      { id: makeId(), name: "Dylan Lee", slot: "LHP", tc: "MLB" },
-      { id: makeId(), name: "Tyler Kinley", slot: "RHP", tc: "MLB" },
-      { id: makeId(), name: "Joel Payamps", slot: "RHP", tc: "MLB" },
-      { id: makeId(), name: "Osvaldo Bido", slot: "RHP", tc: "MLB" },
-      { id: makeId(), name: "Grant Holmes", slot: "RHP", tc: "MLB" }
-    ]
-  },
-  transactions: [
-    {
-      id: makeId(),
-      date: "2026-04-01",
-      opponent: "Royals",
-      result: "Win",
-      acquiredPlayer: "Bobby Witt Jr.",
-      removedPlayer: "Kyle Farmer",
-      notes: "Installed Bobby Witt Jr. at shortstop."
-    },
-    {
-      id: makeId(),
-      date: "2026-04-03",
-      opponent: "Athletics",
-      result: "Win",
-      acquiredPlayer: "Luis Severino",
-      removedPlayer: "Jose Suarez",
-      notes: "Severino added to the rotation."
-    },
-    {
-      id: makeId(),
-      date: "2026-04-05",
-      opponent: "Angels",
-      result: "Win",
-      acquiredPlayer: "Jose Soriano",
-      removedPlayer: "Martin Perez",
-      notes: "Soriano added to the rotation."
-    }
+const baseRosterDefault = {
+  lineup: [
+    { id: makeId(), name: "Drake Baldwin", slot: "C" },
+    { id: makeId(), name: "Matt Olson", slot: "1B" },
+    { id: makeId(), name: "Ozzie Albies", slot: "2B" },
+    { id: makeId(), name: "Austin Riley", slot: "3B" },
+    { id: makeId(), name: "Bobby Witt Jr.", slot: "SS" },
+    { id: makeId(), name: "Mike Yastrzemski", slot: "LF" },
+    { id: makeId(), name: "Michael Harris II", slot: "CF" },
+    { id: makeId(), name: "Ronald Acuña Jr.", slot: "RF" }
+  ],
+  bench: [
+    { id: makeId(), name: "Jonah Heim", slot: "C" },
+    { id: makeId(), name: "Dominic Smith", slot: "DH/1B" },
+    { id: makeId(), name: "Mauricio Dubón", slot: "UTIL" },
+    { id: makeId(), name: "Jorge Mateo", slot: "INF" },
+    { id: makeId(), name: "Eli White", slot: "OF" }
+  ],
+  rotation: [
+    { id: makeId(), name: "Chris Sale", slot: "SP1" },
+    { id: makeId(), name: "Jose Soriano", slot: "SP2" },
+    { id: makeId(), name: "Reynaldo Lopez", slot: "SP3" },
+    { id: makeId(), name: "Luis Severino", slot: "SP4" },
+    { id: makeId(), name: "Bryce Elder", slot: "SP5" }
+  ],
+  bullpen: [
+    { id: makeId(), name: "Robert Suarez", slot: "CL" },
+    { id: makeId(), name: "Raisel Iglesias", slot: "SU" },
+    { id: makeId(), name: "Aaron Bummer", slot: "LHP" },
+    { id: makeId(), name: "Dylan Lee", slot: "LHP" },
+    { id: makeId(), name: "Tyler Kinley", slot: "RHP" },
+    { id: makeId(), name: "Joel Payamps", slot: "RHP" },
+    { id: makeId(), name: "Osvaldo Bido", slot: "RHP" },
+    { id: makeId(), name: "Grant Holmes", slot: "RHP" }
   ]
 };
 
-let state = loadState();
-let editingTransactionId = null;
+const transactionsDefault = [
+  {
+    id: makeId(),
+    date: "2026-04-01",
+    opponent: "Royals",
+    result: "Win",
+    acquiredPlayer: "Bobby Witt Jr.",
+    acquiredSlot: "SS",
+    acquiredGroup: "lineup",
+    removedPlayer: "Orlando Arcia",
+    notes: "Installed Bobby Witt Jr. at shortstop."
+  },
+  {
+    id: makeId(),
+    date: "2026-04-03",
+    opponent: "Athletics",
+    result: "Win",
+    acquiredPlayer: "Luis Severino",
+    acquiredSlot: "SP4",
+    acquiredGroup: "rotation",
+    removedPlayer: "Jose Suarez",
+    notes: "Severino added to the rotation."
+  },
+  {
+    id: makeId(),
+    date: "2026-04-05",
+    opponent: "Angels",
+    result: "Win",
+    acquiredPlayer: "Jose Soriano",
+    acquiredSlot: "SP2",
+    acquiredGroup: "rotation",
+    removedPlayer: "Martin Perez",
+    notes: "Soriano added to the rotation."
+  }
+];
 
 const rosterMeta = {
   lineup: "Starting 8",
@@ -77,6 +79,9 @@ const rosterMeta = {
   rotation: "Rotation",
   bullpen: "Bullpen"
 };
+
+let state = loadState();
+let editingTransactionId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   bindTabs();
@@ -89,17 +94,29 @@ function makeId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(defaultState);
+    if (!raw) {
+      return {
+        baseRoster: deepClone(baseRosterDefault),
+        transactions: deepClone(transactionsDefault)
+      };
+    }
     const parsed = JSON.parse(raw);
     return {
-      roster: parsed.roster || structuredClone(defaultState.roster),
-      transactions: parsed.transactions || structuredClone(defaultState.transactions)
+      baseRoster: parsed.baseRoster || deepClone(baseRosterDefault),
+      transactions: parsed.transactions || deepClone(transactionsDefault)
     };
   } catch {
-    return structuredClone(defaultState);
+    return {
+      baseRoster: deepClone(baseRosterDefault),
+      transactions: deepClone(transactionsDefault)
+    };
   }
 }
 
@@ -126,12 +143,24 @@ function bindTabs() {
 
 function bindDownload() {
   document.getElementById("downloadChartBtn").addEventListener("click", async () => {
-    const el = document.getElementById("depthChartExport");
-    const canvas = await html2canvas(el, {
+    const original = document.getElementById("depthChartExport");
+    const clone = original.cloneNode(true);
+
+    clone.style.width = "1080px";
+    clone.style.height = "1080px";
+    clone.style.aspectRatio = "unset";
+    clone.style.position = "fixed";
+    clone.style.left = "-99999px";
+    clone.style.top = "0";
+    document.body.appendChild(clone);
+
+    const canvas = await html2canvas(clone, {
       backgroundColor: null,
       scale: 2,
       useCORS: true
     });
+
+    document.body.removeChild(clone);
 
     const link = document.createElement("a");
     link.download = "braves-imperialism-depth-chart.png";
@@ -145,30 +174,97 @@ function bindTransactionForm() {
   document.getElementById("cancelEditBtn").addEventListener("click", cancelTransactionEdit);
 }
 
+function getSortedTransactions() {
+  return [...state.transactions].sort((a, b) => {
+    const da = a.date || "";
+    const db = b.date || "";
+    if (da !== db) return da.localeCompare(db);
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function getCurrentRoster() {
+  const roster = deepClone(state.baseRoster);
+  const transactions = getSortedTransactions();
+
+  for (const tx of transactions) {
+    const acquired = (tx.acquiredPlayer || "").trim();
+    const removed = (tx.removedPlayer || "").trim();
+    const acquiredSlot = (tx.acquiredSlot || "").trim();
+    const acquiredGroup = tx.acquiredGroup || inferGroupFromSlot(acquiredSlot);
+
+    if (removed) {
+      for (const group of Object.keys(roster)) {
+        roster[group] = roster[group].filter(
+          (player) => normalize(player.name) !== normalize(removed)
+        );
+      }
+    }
+
+    if (acquired && tx.result === "Win") {
+      if (!roster[acquiredGroup]) roster.bench.push({ id: makeId(), name: acquired, slot: acquiredSlot || "UTIL" });
+      else {
+        const exists = Object.values(roster).flat().some(
+          (player) => normalize(player.name) === normalize(acquired)
+        );
+        if (!exists) {
+          roster[acquiredGroup].push({
+            id: makeId(),
+            name: acquired,
+            slot: acquiredSlot || defaultSlotForGroup(acquiredGroup)
+          });
+        }
+      }
+    }
+  }
+
+  return roster;
+}
+
+function inferGroupFromSlot(slot) {
+  const s = (slot || "").toUpperCase();
+  if (s.startsWith("SP")) return "rotation";
+  if (["CL", "SU", "LHP", "RHP", "RP"].some((x) => s.includes(x))) return "bullpen";
+  if (["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"].includes(s)) return "lineup";
+  return "bench";
+}
+
+function defaultSlotForGroup(group) {
+  if (group === "rotation") return "SP";
+  if (group === "bullpen") return "RP";
+  if (group === "lineup") return "UTIL";
+  return "UTIL";
+}
+
+function normalize(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function renderAll() {
-  renderCounts();
-  renderDepthChart();
+  const currentRoster = getCurrentRoster();
+  renderCounts(currentRoster);
+  renderDepthChart(currentRoster);
   renderRosterEditor();
   renderTransactions();
   saveState();
 }
 
-function renderCounts() {
-  const total = Object.values(state.roster).flat().length;
+function renderCounts(currentRoster) {
+  const total = Object.values(currentRoster).flat().length;
   document.getElementById("totalPlayersBadge").textContent = `${total} Players Loaded`;
   document.getElementById("chartFooterCount").textContent = `${total} Players Loaded`;
 }
 
-function getCombinedHitters() {
-  return [...state.roster.lineup, ...state.roster.bench];
+function getCombinedHitters(roster) {
+  return [...roster.lineup, ...roster.bench];
 }
 
-function exactPlayers(slot) {
-  return getCombinedHitters().filter((p) => p.slot.toUpperCase() === slot.toUpperCase());
+function exactPlayers(roster, slot) {
+  return getCombinedHitters(roster).filter((p) => p.slot.toUpperCase() === slot.toUpperCase());
 }
 
-function includesPlayers(keys) {
-  return getCombinedHitters().filter((p) =>
+function includesPlayers(roster, keys) {
+  return getCombinedHitters(roster).filter((p) =>
     keys.some((key) => p.slot.toUpperCase().includes(key.toUpperCase()))
   );
 }
@@ -182,41 +278,53 @@ function uniqPlayers(arr) {
   });
 }
 
-function renderDepthChart() {
-  const lf = uniqPlayers([...exactPlayers("LF"), ...exactPlayers("OF")]);
-  const cf = uniqPlayers([...exactPlayers("CF"), ...exactPlayers("OF")]);
-  const rf = uniqPlayers([...exactPlayers("RF"), ...exactPlayers("OF")]);
+function capPlayers(arr, max = 4) {
+  return arr.slice(0, max);
+}
 
-  const third = uniqPlayers([...exactPlayers("3B"), ...exactPlayers("INF"), ...exactPlayers("UTIL")]);
-  const ss = uniqPlayers([...exactPlayers("SS"), ...exactPlayers("INF"), ...exactPlayers("UTIL")]);
-  const second = uniqPlayers([...exactPlayers("2B"), ...exactPlayers("INF"), ...exactPlayers("UTIL")]);
-  const first = uniqPlayers([...exactPlayers("1B"), ...includesPlayers(["DH"]), ...exactPlayers("UTIL")]);
-  const catcher = uniqPlayers(exactPlayers("C"));
+function renderDepthChart(roster) {
+  const lf = capPlayers(uniqPlayers([...exactPlayers(roster, "LF"), ...exactPlayers(roster, "OF")]));
+  const cf = capPlayers(uniqPlayers([...exactPlayers(roster, "CF"), ...exactPlayers(roster, "OF")]));
+  const rf = capPlayers(uniqPlayers([...exactPlayers(roster, "RF"), ...exactPlayers(roster, "OF")]));
 
-  document.getElementById("pos-lf").innerHTML = buildPositionCard("LF", lf, "green");
-  document.getElementById("pos-cf").innerHTML = buildPositionCard("CF", cf, "green");
-  document.getElementById("pos-rf").innerHTML = buildPositionCard("RF", rf, "purple");
+  const third = capPlayers(uniqPlayers([...exactPlayers(roster, "3B"), ...exactPlayers(roster, "INF"), ...exactPlayers(roster, "UTIL")]));
+  const ss = capPlayers(uniqPlayers([...exactPlayers(roster, "SS"), ...exactPlayers(roster, "INF"), ...exactPlayers(roster, "UTIL")]));
+  const second = capPlayers(uniqPlayers([...exactPlayers(roster, "2B"), ...exactPlayers(roster, "INF"), ...exactPlayers(roster, "UTIL")]));
+  const first = capPlayers(uniqPlayers([...exactPlayers(roster, "1B"), ...includesPlayers(roster, ["DH"]), ...exactPlayers(roster, "UTIL")]));
+  const catcher = capPlayers(uniqPlayers(exactPlayers(roster, "C")), 3);
 
-  document.getElementById("pos-3b").innerHTML = buildPositionCard("3B", third, "purple");
-  document.getElementById("pos-ss").innerHTML = buildPositionCard("SS", ss, "navy");
-  document.getElementById("pos-2b").innerHTML = buildPositionCard("2B", second, "green");
-  document.getElementById("pos-1b").innerHTML = buildPositionCard("1B", first, "navy");
+  document.getElementById("pos-lf").className = "pos-card pos-lf green";
+  document.getElementById("pos-cf").className = "pos-card pos-cf green";
+  document.getElementById("pos-rf").className = "pos-card pos-rf purple";
+  document.getElementById("pos-3b").className = "pos-card pos-3b purple";
+  document.getElementById("pos-ss").className = "pos-card pos-ss navy";
+  document.getElementById("pos-2b").className = "pos-card pos-2b green";
+  document.getElementById("pos-1b").className = "pos-card pos-1b navy";
+  document.getElementById("pos-c").className = "pos-card pos-c red";
 
-  document.getElementById("pos-c").innerHTML = buildPositionCard("C", catcher, "red");
+  document.getElementById("pos-lf").innerHTML = buildPositionCard("LF", lf);
+  document.getElementById("pos-cf").innerHTML = buildPositionCard("CF", cf);
+  document.getElementById("pos-rf").innerHTML = buildPositionCard("RF", rf);
+  document.getElementById("pos-3b").innerHTML = buildPositionCard("3B", third);
+  document.getElementById("pos-ss").innerHTML = buildPositionCard("SS", ss);
+  document.getElementById("pos-2b").innerHTML = buildPositionCard("2B", second);
+  document.getElementById("pos-1b").innerHTML = buildPositionCard("1B", first);
+  document.getElementById("pos-c").innerHTML = buildPositionCard("C", catcher);
 
-  document.getElementById("rotationList").innerHTML = state.roster.rotation
+  document.getElementById("rotationList").innerHTML = roster.rotation
+    .slice(0, 5)
     .map(
       (p) => `
         <div class="staff-row rotation-row">
           <div class="row-pos">${escapeHtml(p.slot)}</div>
           <div class="row-name">${escapeHtml(p.name)}</div>
-          <div class="row-tc">${escapeHtml(p.tc || "")}</div>
         </div>
       `
     )
     .join("");
 
-  document.getElementById("bullpenList").innerHTML = state.roster.bullpen
+  document.getElementById("bullpenList").innerHTML = roster.bullpen
+    .slice(0, 8)
     .map(
       (p) => `
         <div class="staff-row bullpen-row">
@@ -228,7 +336,21 @@ function renderDepthChart() {
     .join("");
 }
 
-function buildPositionCard(label, players, colorClass) {
+function buildPositionCard(label, players) {
+  const rows = players.length
+    ? players.map((player, index) => `
+      <div class="pos-row">
+        <div class="row-pos">${index === 0 ? label : escapeHtml(player.slot)}</div>
+        <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}</div>
+      </div>
+    `).join("")
+    : `
+      <div class="pos-row">
+        <div class="row-pos">${label}</div>
+        <div class="row-name">—</div>
+      </div>
+    `;
+
   return `
     <div class="pos-head">
       <div class="pos-label">${label}</div>
@@ -236,29 +358,15 @@ function buildPositionCard(label, players, colorClass) {
     <div class="pos-mini-head">
       <div>POS</div>
       <div>NAME</div>
-      <div>TC</div>
     </div>
-    <div class="pos-card ${colorClass}"></div>
-    ${players.length ? players.map((player, index) => `
-      <div class="pos-row">
-        <div class="row-pos">${index === 0 ? label : escapeHtml(player.slot)}</div>
-        <div class="row-name">${escapeHtml(player.name)}</div>
-        <div class="row-tc">${escapeHtml(player.tc || "")}</div>
-      </div>
-    `).join("") : `
-      <div class="pos-row">
-        <div class="row-pos">${label}</div>
-        <div class="row-name">—</div>
-        <div class="row-tc"></div>
-      </div>
-    `}
+    ${rows}
   `;
 }
 
 function renderRosterEditor() {
   const container = document.getElementById("rosterEditorGrid");
 
-  container.innerHTML = Object.entries(state.roster)
+  container.innerHTML = Object.entries(state.baseRoster)
     .map(([groupKey, players]) => `
       <div class="editor-card">
         <div class="editor-card-head">
@@ -270,7 +378,6 @@ function renderRosterEditor() {
             <div class="player-row" data-group="${groupKey}" data-id="${player.id}">
               <input type="text" data-field="name" value="${escapeAttr(player.name)}" placeholder="Player" />
               <input type="text" data-field="slot" value="${escapeAttr(player.slot)}" placeholder="POS" />
-              <input type="text" data-field="tc" value="${escapeAttr(player.tc || "")}" placeholder="TC" />
               <button class="delete-row-btn" data-action="delete-player">Delete</button>
             </div>
           `).join("")}
@@ -282,11 +389,10 @@ function renderRosterEditor() {
   container.querySelectorAll(".add-row-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const group = btn.dataset.group;
-      state.roster[group].push({
+      state.baseRoster[group].push({
         id: makeId(),
         name: "",
-        slot: "",
-        tc: ""
+        slot: defaultSlotForGroup(group)
       });
       renderAll();
     });
@@ -298,12 +404,10 @@ function renderRosterEditor() {
       const group = row.dataset.group;
       const id = row.dataset.id;
       const field = e.target.dataset.field;
-      const player = state.roster[group].find((p) => p.id === id);
+      const player = state.baseRoster[group].find((p) => p.id === id);
       if (!player) return;
       player[field] = e.target.value;
-      renderCounts();
-      renderDepthChart();
-      saveState();
+      renderAll();
     });
   });
 
@@ -312,7 +416,7 @@ function renderRosterEditor() {
       const row = btn.closest(".player-row");
       const group = row.dataset.group;
       const id = row.dataset.id;
-      state.roster[group] = state.roster[group].filter((p) => p.id !== id);
+      state.baseRoster[group] = state.baseRoster[group].filter((p) => p.id !== id);
       renderAll();
     });
   });
@@ -320,8 +424,9 @@ function renderRosterEditor() {
 
 function renderTransactions() {
   const list = document.getElementById("transactionList");
+  const transactions = getSortedTransactions();
 
-  list.innerHTML = state.transactions
+  list.innerHTML = transactions
     .map((t) => `
       <div class="transaction-card">
         <div class="transaction-main">
@@ -332,6 +437,7 @@ function renderTransactions() {
           </div>
           <div class="transaction-details">
             <div><strong>Acquired:</strong> ${escapeHtml(t.acquiredPlayer || "—")}</div>
+            <div><strong>Acquired Slot:</strong> ${escapeHtml(t.acquiredSlot || "—")}</div>
             <div><strong>Removed:</strong> ${escapeHtml(t.removedPlayer || "—")}</div>
             <div><strong>Notes:</strong> ${escapeHtml(t.notes || "—")}</div>
           </div>
@@ -355,9 +461,7 @@ function renderTransactions() {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id;
       state.transactions = state.transactions.filter((t) => t.id !== id);
-      if (editingTransactionId === id) {
-        cancelTransactionEdit();
-      }
+      if (editingTransactionId === id) cancelTransactionEdit();
       renderAll();
     });
   });
@@ -369,13 +473,20 @@ function saveTransactionFromForm() {
     opponent: document.getElementById("txOpponent").value.trim(),
     result: document.getElementById("txResult").value,
     acquiredPlayer: document.getElementById("txAcquiredPlayer").value.trim(),
+    acquiredSlot: document.getElementById("txAcquiredPlayer").dataset.slot || "",
+    acquiredGroup: document.getElementById("txAcquiredPlayer").dataset.group || "",
     removedPlayer: document.getElementById("txRemovedPlayer").value.trim(),
     notes: document.getElementById("txNotes").value.trim()
   };
 
-  if (!tx.opponent || !tx.result) {
-    alert("Add at least an opponent and a result.");
+  if (!tx.opponent || !tx.result || !tx.date) {
+    alert("Add a date, opponent, and result.");
     return;
+  }
+
+  if (tx.acquiredPlayer && !tx.acquiredSlot) {
+    tx.acquiredSlot = prompt("What position/slot should the acquired player have? Example: SS, LF, SP4, RP") || "";
+    tx.acquiredGroup = inferGroupFromSlot(tx.acquiredSlot);
   }
 
   if (editingTransactionId) {
@@ -383,7 +494,7 @@ function saveTransactionFromForm() {
       item.id === editingTransactionId ? { ...item, ...tx } : item
     );
   } else {
-    state.transactions.unshift({
+    state.transactions.push({
       id: makeId(),
       ...tx
     });
@@ -405,6 +516,8 @@ function startTransactionEdit(id) {
   document.getElementById("txOpponent").value = tx.opponent || "";
   document.getElementById("txResult").value = tx.result || "";
   document.getElementById("txAcquiredPlayer").value = tx.acquiredPlayer || "";
+  document.getElementById("txAcquiredPlayer").dataset.slot = tx.acquiredSlot || "";
+  document.getElementById("txAcquiredPlayer").dataset.group = tx.acquiredGroup || "";
   document.getElementById("txRemovedPlayer").value = tx.removedPlayer || "";
   document.getElementById("txNotes").value = tx.notes || "";
 
@@ -422,6 +535,8 @@ function cancelTransactionEdit(resetFields = true) {
   document.getElementById("txOpponent").value = "";
   document.getElementById("txResult").value = "";
   document.getElementById("txAcquiredPlayer").value = "";
+  document.getElementById("txAcquiredPlayer").dataset.slot = "";
+  document.getElementById("txAcquiredPlayer").dataset.group = "";
   document.getElementById("txRemovedPlayer").value = "";
   document.getElementById("txNotes").value = "";
 }
@@ -434,7 +549,7 @@ function resultClass(result) {
 }
 
 function escapeHtml(value) {
-  return String(value)
+  return String(value || "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
