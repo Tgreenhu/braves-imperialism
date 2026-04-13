@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v3";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v4";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
@@ -122,6 +122,8 @@ let cloudSaveTimer = null;
 let suppressCloudSave = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  setSyncStatus("Sync: starting...");
+
   hydrateTransactionPositionSelect();
   bindTabs();
   bindTransactionForm();
@@ -136,13 +138,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAll();
   initDepthBoxDragging();
 
-  const { data } = await supabaseClient.auth.getSession();
-  currentUser = data.session?.user ?? null;
-  updateAuthUI();
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
 
-  if (currentUser) {
-    await loadStateFromSupabase();
-    renderAll();
+    if (error) {
+      console.error("Session load failed:", error);
+      setSyncStatus(`Sync failed: ${error.message}`);
+      return;
+    }
+
+    currentUser = data.session?.user ?? null;
+    updateAuthUI();
+
+    if (currentUser) {
+      await loadStateFromSupabase();
+      renderAll();
+    }
+  } catch (err) {
+    console.error("Startup failed:", err);
+    setSyncStatus(`Sync failed: ${err.message || "startup error"}`);
   }
 
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
@@ -242,7 +256,10 @@ function setSyncStatus(message) {
 function queueCloudSave() {
   saveLocalState();
 
-  if (suppressCloudSave) return;
+  if (suppressCloudSave) {
+    setSyncStatus("Sync: paused");
+    return;
+  }
 
   if (!currentUser) {
     setSyncStatus("Sync: local only");
@@ -585,7 +602,6 @@ function initDepthBoxDragging() {
     box.addEventListener("pointerdown", (e) => {
       if (window.innerWidth <= 760) return;
 
-      const chartRect = chart.getBoundingClientRect();
       const boxRect = box.getBoundingClientRect();
 
       draggingBox = {
