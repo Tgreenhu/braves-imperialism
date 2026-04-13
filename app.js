@@ -1,4 +1,5 @@
 const STORAGE_KEY = "braves-imperialism-tracker-supabase-v2";
+const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZmJoandrYWl6b2d3b2NnZ2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzQ0NTIsImV4cCI6MjA5MTY1MDQ1Mn0.LzRTgsSATpEmNvQH1meXeGtZfZ5Nu0yc5_GF4_TUntM";
@@ -127,6 +128,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindDownload();
   bindLayoutReset();
   bindAuthControls();
+
+  if (window.location.href.includes("access_token") || window.location.hash.includes("access_token")) {
+    console.log("Supabase auth callback detected");
+  }
+
   renderAll();
   initDepthBoxDragging();
 
@@ -320,7 +326,7 @@ function bindAuthControls() {
     const { error } = await supabaseClient.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.href
+        emailRedirectTo: REDIRECT_URL
       }
     });
 
@@ -535,6 +541,9 @@ function renderPositionBox(pos, players, maxVisible) {
 }
 
 function applyDepthBoxPositions() {
+  const isMobile = window.innerWidth <= 760;
+  if (isMobile) return;
+
   document.querySelectorAll("[data-box]").forEach((box) => {
     const key = box.dataset.box;
     const pos = state.boxLayout[key];
@@ -549,6 +558,8 @@ function initDepthBoxDragging() {
 
   document.querySelectorAll("[data-box]").forEach((box) => {
     box.addEventListener("pointerdown", (e) => {
+      if (window.innerWidth <= 760) return;
+
       const chartRect = chart.getBoundingClientRect();
       const boxRect = box.getBoundingClientRect();
 
@@ -565,6 +576,7 @@ function initDepthBoxDragging() {
 
     box.addEventListener("pointermove", (e) => {
       if (!draggingBox || draggingBox.el !== box) return;
+      if (window.innerWidth <= 760) return;
 
       const chartRect = chart.getBoundingClientRect();
       const nextX = e.clientX - chartRect.left - draggingBox.offsetX;
@@ -635,9 +647,9 @@ function renderPlayerRow(player, groupKey) {
         <div class="secondary-positions">
           ${FIELD_POSITIONS.map((pos) => `
             <label class="secondary-pill">
-              <input 
-                type="checkbox" 
-                data-secondary="${pos}" 
+              <input
+                type="checkbox"
+                data-secondary="${pos}"
                 ${player.secondaryPositions.includes(pos) ? "checked" : ""}
               />
               <span>${pos}</span>
