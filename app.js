@@ -1,4 +1,9 @@
-const STORAGE_KEY = "braves-imperialism-tracker-v4";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v1";
+
+const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const POSITION_OPTIONS = [
   "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF",
@@ -107,19 +112,42 @@ const defaultState = {
   boxLayout: structuredClone(DEFAULT_BOX_LAYOUT)
 };
 
-let state = loadState();
+let state = loadLocalState();
 let editingTransactionId = null;
 let draggingBox = null;
 let rosterDrag = null;
+let currentUser = null;
+let cloudSaveTimer = null;
+let suppressCloudSave = false;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   hydrateTransactionPositionSelect();
   bindTabs();
   bindTransactionForm();
   bindDownload();
   bindLayoutReset();
+  bindAuthControls();
   renderAll();
   initDepthBoxDragging();
+
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data.session?.user ?? null;
+  updateAuthUI();
+
+  if (currentUser) {
+    await loadStateFromSupabase();
+    renderAll();
+  }
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user ?? null;
+    updateAuthUI();
+
+    if (currentUser) {
+      await loadStateFromSupabase();
+      renderAll();
+    }
+  });
 });
 
 function makeId() {
@@ -139,12 +167,11 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function loadState() {
+function loadLocalState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return deepClone(defaultState);
     const parsed = JSON.parse(raw);
-
     return {
       roster: normalizeRoster(parsed.roster || defaultState.roster),
       transactions: normalizeTransactions(parsed.transactions || defaultState.transactions),
@@ -163,7 +190,7 @@ function normalizeRoster(roster) {
       normalized[group] = roster[group].map((p) => ({
         id: p.id || makeId(),
         name: p.name || "",
-        primaryPos: p.primaryPos || p.slot || defaultPrimaryPos(group),
+        primaryPos: p.primaryPos || defaultPrimaryPos(group),
         secondaryPositions: Array.isArray(p.secondaryPositions) ? p.secondaryPositions : []
       }));
     }
@@ -197,8 +224,123 @@ function normalizeBoxLayout(layout) {
   return normalized;
 }
 
-function saveState() {
+function saveLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function queueCloudSave() {
+  saveLocalState();
+
+  if (suppressCloudSave || !currentUser) return;
+
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(async () => {
+    await saveStateToSupabase();
+  }, 500);
+}
+
+async function saveStateToSupabase() {
+  if (!currentUser) return;
+
+  const payload = {
+    roster: state.roster,
+    transactions: state.transactions,
+    boxLayout: state.boxLayout
+  };
+
+  const { error } = await supabaseClient
+    .from("tracker_states")
+    .upsert(
+      {
+        user_id: currentUser.id,
+        name: "default",
+        data: payload
+      },
+      { onConflict: "user_id,name" }
+    );
+
+  if (error) {
+    console.error("Supabase save failed:", error);
+  }
+}
+
+async function loadStateFromSupabase() {
+  if (!currentUser) return;
+
+  suppressCloudSave = true;
+
+  const { data, error } = await supabaseClient
+    .from("tracker_states")
+    .select("data")
+    .eq("user_id", currentUser.id)
+    .eq("name", "default")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Supabase load failed:", error);
+    suppressCloudSave = false;
+    return;
+  }
+
+  if (data?.data) {
+    state = {
+      roster: normalizeRoster(data.data.roster || defaultState.roster),
+      transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
+      boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT)
+    };
+  } else {
+    await saveStateToSupabase();
+  }
+
+  saveLocalState();
+  suppressCloudSave = false;
+}
+
+function updateAuthUI() {
+  const authStatus = document.getElementById("authStatus");
+  const signOutBtn = document.getElementById("signOutBtn");
+
+  if (currentUser) {
+    authStatus.textContent = `Signed in as ${currentUser.email}`;
+    signOutBtn.classList.remove("hidden");
+  } else {
+    authStatus.textContent = "Not signed in";
+    signOutBtn.classList.add("hidden");
+  }
+}
+
+function bindAuthControls() {
+  document.getElementById("signInBtn").addEventListener("click", async () => {
+    const email = document.getElementById("authEmail").value.trim();
+    if (!email) {
+      alert("Enter your email first.");
+      return;
+    }
+
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.href
+      }
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("Check your email for the sign-in link.");
+  });
+
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    currentUser = null;
+    updateAuthUI();
+  });
 }
 
 function hydrateTransactionPositionSelect() {
@@ -261,8 +403,8 @@ function bindDownload() {
 function bindLayoutReset() {
   document.getElementById("resetDepthLayoutBtn").addEventListener("click", () => {
     state.boxLayout = structuredClone(DEFAULT_BOX_LAYOUT);
-    saveState();
     applyDepthBoxPositions();
+    queueCloudSave();
   });
 }
 
@@ -271,7 +413,7 @@ function renderAll() {
   renderDepthChart();
   renderRosterEditor();
   renderTransactions();
-  saveState();
+  queueCloudSave();
 }
 
 function renderCounts() {
@@ -332,31 +474,31 @@ function buildDepthMap() {
     const secondary = Array.isArray(player.secondaryPositions) ? player.secondaryPositions : [];
 
     if (FIELD_POSITIONS.includes(primary)) {
-      map[primary].push({ ...player, depthType: "primary", orderKey: index });
+      map[primary].push({ ...player, orderKey: index, isSecondary: false });
     } else {
       if (primary === "INF") {
         ["2B", "3B", "SS"].forEach((pos) => {
-          map[pos].push({ ...player, depthType: "secondary", orderKey: index + 1000 });
+          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
         });
       }
       if (primary === "OF") {
         ["LF", "CF", "RF"].forEach((pos) => {
-          map[pos].push({ ...player, depthType: "secondary", orderKey: index + 1000 });
+          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
         });
       }
       if (primary === "UTIL") {
         ["1B", "2B", "3B", "SS"].forEach((pos) => {
-          map[pos].push({ ...player, depthType: "secondary", orderKey: index + 1000 });
+          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
         });
       }
       if (primary === "DH") {
-        map["1B"].push({ ...player, depthType: "secondary", orderKey: index + 1000 });
+        map["1B"].push({ ...player, orderKey: index + 1000, isSecondary: true });
       }
     }
 
     secondary.forEach((pos) => {
       if (FIELD_POSITIONS.includes(pos)) {
-        map[pos].push({ ...player, depthType: "secondary", orderKey: index + 1000 });
+        map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
       }
     });
   });
@@ -414,9 +556,7 @@ function initDepthBoxDragging() {
         el: box,
         key: box.dataset.box,
         offsetX: e.clientX - boxRect.left,
-        offsetY: e.clientY - boxRect.top,
-        chartWidth: chartRect.width,
-        chartHeight: chartRect.height
+        offsetY: e.clientY - boxRect.top
       };
 
       box.classList.add("dragging");
@@ -445,8 +585,8 @@ function initDepthBoxDragging() {
         x: parseFloat(box.style.left),
         y: parseFloat(box.style.top)
       };
-      saveState();
       draggingBox = null;
+      queueCloudSave();
     };
 
     box.addEventListener("pointerup", endDrag);
@@ -529,7 +669,7 @@ function bindRosterEditorControls() {
       if (!player) return;
       player.name = e.target.value;
       renderDepthChart();
-      saveState();
+      queueCloudSave();
     });
   });
 
@@ -555,7 +695,7 @@ function bindRosterEditorControls() {
       else next.delete(pos);
       player.secondaryPositions = [...next];
       renderDepthChart();
-      saveState();
+      queueCloudSave();
     });
   });
 
@@ -613,13 +753,13 @@ function findRosterPlayer(group, id) {
 }
 
 function defaultPrimaryPos(group) {
-  if (group === "rotation") return "SP";
+  if (group === "rotation") return "SP1";
   if (group === "bullpen") return "RP";
   if (group === "bench") return "UTIL";
   return "UTIL";
 }
 
-function bindTransactionFormValues(tx) {
+function bindTransactionFormValues(tx = null) {
   document.getElementById("txDate").value = tx?.date || new Date().toISOString().slice(0, 10);
   document.getElementById("txOpponent").value = tx?.opponent || "";
   document.getElementById("txResult").value = tx?.result || "";
@@ -648,29 +788,32 @@ function saveTransactionFromForm() {
   }
 
   if (editingTransactionId) {
+    const existing = state.transactions.find((item) => item.id === editingTransactionId);
+    reverseTransactionFromRoster(existing);
+
     state.transactions = state.transactions.map((item) =>
-      item.id === editingTransactionId ? { ...item, ...tx } : item
+      item.id === editingTransactionId
+        ? { ...item, ...tx }
+        : item
     );
+
+    applyTransactionToRoster(tx);
   } else {
-    state.transactions.push({
+    const fullTx = {
       id: makeId(),
       createdAt: Date.now(),
       ...tx
-    });
+    };
+    state.transactions.push(fullTx);
+    applyTransactionToRoster(fullTx);
   }
 
-  applyTransactionToRoster(tx, editingTransactionId);
   state.transactions = getSortedTransactions();
   cancelTransactionEdit();
   renderAll();
 }
 
-function applyTransactionToRoster(tx, editingId = null) {
-  if (editingId) {
-    state.roster = rebuildRosterFromTransactions();
-    return;
-  }
-
+function applyTransactionToRoster(tx) {
   if (tx.removedPlayer) {
     for (const group of Object.keys(state.roster)) {
       state.roster[group] = state.roster[group].filter(
@@ -691,9 +834,27 @@ function applyTransactionToRoster(tx, editingId = null) {
   }
 }
 
-function rebuildRosterFromTransactions() {
+function reverseTransactionFromRoster(tx) {
+  if (!tx) return;
+
+  if (String(tx.result).toLowerCase() === "win" && tx.acquiredPlayer) {
+    for (const group of Object.keys(state.roster)) {
+      state.roster[group] = state.roster[group].filter(
+        (player) => normalize(player.name) !== normalize(tx.acquiredPlayer)
+      );
+    }
+  }
+
+  if (tx.removedPlayer) {
+    // no perfect way to restore prior deleted player without full history snapshot
+    // so rebuild from defaults + transactions except current edit
+    state.roster = rebuildRosterWithoutTransaction(tx.id);
+  }
+}
+
+function rebuildRosterWithoutTransaction(excludedId) {
   const roster = deepClone(defaultState.roster);
-  const sorted = getSortedTransactions();
+  const sorted = getSortedTransactions().filter((t) => t.id !== excludedId);
 
   for (const tx of sorted) {
     if (tx.removedPlayer) {
@@ -761,9 +922,9 @@ function renderTransactions() {
 
   list.querySelectorAll("[data-action='delete-transaction']").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.transactions = state.transactions.filter((t) => t.id !== btn.dataset.id);
-      state.roster = rebuildRosterFromTransactions();
-      if (editingTransactionId === btn.dataset.id) cancelTransactionEdit();
+      const id = btn.dataset.id;
+      state.transactions = state.transactions.filter((t) => t.id !== id);
+      state.roster = rebuildRosterWithoutTransaction(null);
       renderAll();
     });
   });
@@ -782,7 +943,7 @@ function cancelTransactionEdit() {
   editingTransactionId = null;
   document.getElementById("transactionFormTitle").textContent = "Add Transaction";
   document.getElementById("cancelEditBtn").classList.add("hidden");
-  bindTransactionFormValues(null);
+  bindTransactionFormValues();
 }
 
 function inferGroupFromPrimaryPos(pos) {
