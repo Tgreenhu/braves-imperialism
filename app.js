@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v1";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v2";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZmJoandrYWl6b2d3b2NnZ2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzQ0NTIsImV4cCI6MjA5MTY1MDQ1Mn0.LzRTgsSATpEmNvQH1meXeGtZfZ5Nu0yc5_GF4_TUntM";
@@ -345,7 +345,8 @@ function bindAuthControls() {
 
 function hydrateTransactionPositionSelect() {
   const select = document.getElementById("txAcquiredSlot");
-  select.innerHTML = `<option value="">Select position</option>` +
+  select.innerHTML =
+    `<option value="">Select position</option>` +
     POSITION_OPTIONS.map((pos) => `<option value="${pos}">${pos}</option>`).join("");
 }
 
@@ -523,10 +524,9 @@ function renderPositionBox(pos, players, maxVisible) {
   const extra = Math.max(0, players.length - maxVisible);
 
   target.innerHTML = `
-    <div class="depth-title">${pos}</div>
-    ${visible.map((player, i) => `
+    ${visible.map((player) => `
       <div class="depth-row">
-        <div class="row-pos">${i === 0 ? pos : escapeHtml(player.primaryPos)}</div>
+        <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
         <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}</div>
       </div>
     `).join("")}
@@ -846,15 +846,13 @@ function reverseTransactionFromRoster(tx) {
   }
 
   if (tx.removedPlayer) {
-    // no perfect way to restore prior deleted player without full history snapshot
-    // so rebuild from defaults + transactions except current edit
     state.roster = rebuildRosterWithoutTransaction(tx.id);
   }
 }
 
 function rebuildRosterWithoutTransaction(excludedId) {
   const roster = deepClone(defaultState.roster);
-  const sorted = getSortedTransactions().filter((t) => t.id !== excludedId);
+  const sorted = getSortedTransactions().filter((t) => (excludedId ? t.id !== excludedId : true));
 
   for (const tx of sorted) {
     if (tx.removedPlayer) {
