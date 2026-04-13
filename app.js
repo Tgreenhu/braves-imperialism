@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v7";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v8";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -120,44 +120,7 @@ const defaultState = {
       makePlayer("Grant Holmes", "RHP")
     ]
   },
-  transactions: [
-    {
-      id: makeId(),
-      createdAt: Date.now() - 3000,
-      date: `${CURRENT_SEASON}-04-01`,
-      opponent: "Royals",
-      result: "Win",
-      acquiredPlayer: "Bobby Witt Jr.",
-      acquiredSlot: "SS",
-      acquiredGroup: "lineup",
-      removedPlayer: "Kyle Farmer",
-      notes: "Installed Bobby Witt Jr. at shortstop."
-    },
-    {
-      id: makeId(),
-      createdAt: Date.now() - 2000,
-      date: `${CURRENT_SEASON}-04-03`,
-      opponent: "Athletics",
-      result: "Win",
-      acquiredPlayer: "Luis Severino",
-      acquiredSlot: "SP4",
-      acquiredGroup: "rotation",
-      removedPlayer: "Jose Suarez",
-      notes: "Severino added to the rotation."
-    },
-    {
-      id: makeId(),
-      createdAt: Date.now() - 1000,
-      date: `${CURRENT_SEASON}-04-05`,
-      opponent: "Angels",
-      result: "Win",
-      acquiredPlayer: "Jose Soriano",
-      acquiredSlot: "SP2",
-      acquiredGroup: "rotation",
-      removedPlayer: "Martin Perez",
-      notes: "Soriano added to the rotation."
-    }
-  ],
+  transactions: [],
   boxLayout: structuredClone(DEFAULT_BOX_LAYOUT),
   playerHistory: []
 };
@@ -237,7 +200,7 @@ function loadLocalState() {
     const parsed = JSON.parse(raw);
     return {
       roster: normalizeRoster(parsed.roster || defaultState.roster),
-      transactions: normalizeTransactions(parsed.transactions || defaultState.transactions),
+      transactions: normalizeTransactions(parsed.transactions || []),
       boxLayout: normalizeBoxLayout(parsed.boxLayout || DEFAULT_BOX_LAYOUT),
       playerHistory: normalizePlayerHistory(parsed.playerHistory || [])
     };
@@ -299,7 +262,6 @@ function normalizePlayerHistory(history) {
 
 function ensurePlayerHistory() {
   if (!Array.isArray(state.playerHistory)) state.playerHistory = [];
-
   const seen = new Set(state.playerHistory.map((p) => normalize(p.name)));
 
   for (const player of Object.values(state.roster).flat()) {
@@ -361,7 +323,6 @@ function setSyncStatus(message) {
 
 function queueCloudSave() {
   saveLocalState();
-
   if (suppressCloudSave || isHydratingFromCloud) return;
 
   if (!currentUser) {
@@ -434,7 +395,7 @@ async function loadStateFromSupabase() {
     if (data?.data) {
       state = {
         roster: normalizeRoster(data.data.roster || defaultState.roster),
-        transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
+        transactions: normalizeTransactions(data.data.transactions || []),
         boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT),
         playerHistory: normalizePlayerHistory(data.data.playerHistory || [])
       };
@@ -526,13 +487,6 @@ function bindAuthControls() {
   });
 }
 
-function hydrateTransactionPositionSelect() {
-  const select = document.getElementById("txAcquiredSlot");
-  select.innerHTML =
-    `<option value="">Select position</option>` +
-    POSITION_OPTIONS.map((pos) => `<option value="${pos}">${pos}</option>`).join("");
-}
-
 function bindTabs() {
   const buttons = document.querySelectorAll(".tab-button");
   const panels = document.querySelectorAll(".tab-panel");
@@ -550,6 +504,13 @@ function bindTabs() {
       }
     });
   });
+}
+
+function hydrateTransactionPositionSelect() {
+  const select = document.getElementById("txAcquiredSlot");
+  select.innerHTML =
+    `<option value="">Select position</option>` +
+    POSITION_OPTIONS.map((pos) => `<option value="${pos}">${pos}</option>`).join("");
 }
 
 function bindTransactionForm() {
@@ -618,6 +579,47 @@ function renderCounts() {
   document.getElementById("chartFooterCount").textContent = `${total} Players Loaded`;
 }
 
+function buildDepthMap() {
+  const map = {
+    C: [], "1B": [], "2B": [], "3B": [], SS: [], LF: [], CF: [], RF: []
+  };
+
+  const hitters = [...state.roster.lineup, ...state.roster.bench];
+
+  hitters.forEach((player, index) => {
+    const primary = player.primaryPos;
+    const secondary = Array.isArray(player.secondaryPositions) ? player.secondaryPositions : [];
+
+    if (FIELD_POSITIONS.includes(primary)) {
+      map[primary].push({ ...player, orderKey: index });
+    } else {
+      if (primary === "INF") ["2B", "3B", "SS"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
+      if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
+      if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
+      if (primary === "DH") map["1B"].push({ ...player, orderKey: index + 1000 });
+    }
+
+    secondary.forEach((pos) => {
+      if (FIELD_POSITIONS.includes(pos)) {
+        map[pos].push({ ...player, orderKey: index + 1000 });
+      }
+    });
+  });
+
+  Object.keys(map).forEach((key) => {
+    const seen = new Set();
+    map[key] = map[key]
+      .sort((a, b) => a.orderKey - b.orderKey)
+      .filter((player) => {
+        if (seen.has(player.id)) return false;
+        seen.add(player.id);
+        return true;
+      });
+  });
+
+  return map;
+}
+
 function renderDepthChart() {
   const map = buildDepthMap();
 
@@ -630,87 +632,21 @@ function renderDepthChart() {
   renderPositionBox("1B", map["1B"], 4);
   renderPositionBox("C", map.C, 3);
 
-  document.getElementById("rotationList").innerHTML = state.roster.rotation
-    .map((p) => `
-      <div class="staff-row">
-        <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
-      </div>
-    `)
-    .join("");
+  document.getElementById("rotationList").innerHTML = state.roster.rotation.map((p) => `
+    <div class="staff-row">
+      <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
+      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+    </div>
+  `).join("");
 
-  document.getElementById("bullpenList").innerHTML = state.roster.bullpen
-    .map((p) => `
-      <div class="staff-row">
-        <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
-      </div>
-    `)
-    .join("");
+  document.getElementById("bullpenList").innerHTML = state.roster.bullpen.map((p) => `
+    <div class="staff-row">
+      <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
+      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+    </div>
+  `).join("");
 
   applyDepthBoxPositions();
-}
-
-function buildDepthMap() {
-  const map = {
-    C: [],
-    "1B": [],
-    "2B": [],
-    "3B": [],
-    SS: [],
-    LF: [],
-    CF: [],
-    RF: []
-  };
-
-  const hitters = [...state.roster.lineup, ...state.roster.bench];
-
-  hitters.forEach((player, index) => {
-    const primary = player.primaryPos;
-    const secondary = Array.isArray(player.secondaryPositions) ? player.secondaryPositions : [];
-
-    if (FIELD_POSITIONS.includes(primary)) {
-      map[primary].push({ ...player, orderKey: index, isSecondary: false });
-    } else {
-      if (primary === "INF") {
-        ["2B", "3B", "SS"].forEach((pos) => {
-          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
-        });
-      }
-      if (primary === "OF") {
-        ["LF", "CF", "RF"].forEach((pos) => {
-          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
-        });
-      }
-      if (primary === "UTIL") {
-        ["1B", "2B", "3B", "SS"].forEach((pos) => {
-          map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
-        });
-      }
-      if (primary === "DH") {
-        map["1B"].push({ ...player, orderKey: index + 1000, isSecondary: true });
-      }
-    }
-
-    secondary.forEach((pos) => {
-      if (FIELD_POSITIONS.includes(pos)) {
-        map[pos].push({ ...player, orderKey: index + 1000, isSecondary: true });
-      }
-    });
-  });
-
-  for (const key of Object.keys(map)) {
-    const seen = new Set();
-    map[key] = map[key]
-      .sort((a, b) => a.orderKey - b.orderKey)
-      .filter((player) => {
-        if (seen.has(player.id)) return false;
-        seen.add(player.id);
-        return true;
-      });
-  }
-
-  return map;
 }
 
 function renderPositionBox(pos, players, maxVisible) {
@@ -730,8 +666,7 @@ function renderPositionBox(pos, players, maxVisible) {
 }
 
 function applyDepthBoxPositions() {
-  const isMobile = window.innerWidth <= 760;
-  if (isMobile) return;
+  if (window.innerWidth <= 760) return;
 
   document.querySelectorAll("[data-box]").forEach((box) => {
     const key = box.dataset.box;
@@ -748,24 +683,19 @@ function initDepthBoxDragging() {
   document.querySelectorAll("[data-box]").forEach((box) => {
     box.addEventListener("pointerdown", (e) => {
       if (window.innerWidth <= 760) return;
-
       const boxRect = box.getBoundingClientRect();
-
       draggingBox = {
         el: box,
         key: box.dataset.box,
         offsetX: e.clientX - boxRect.left,
         offsetY: e.clientY - boxRect.top
       };
-
       box.classList.add("dragging");
       box.setPointerCapture(e.pointerId);
     });
 
     box.addEventListener("pointermove", (e) => {
-      if (!draggingBox || draggingBox.el !== box) return;
-      if (window.innerWidth <= 760) return;
-
+      if (!draggingBox || draggingBox.el !== box || window.innerWidth <= 760) return;
       const chartRect = chart.getBoundingClientRect();
       const nextX = e.clientX - chartRect.left - draggingBox.offsetX;
       const nextY = e.clientY - chartRect.top - draggingBox.offsetY;
@@ -780,7 +710,6 @@ function initDepthBoxDragging() {
     const endDrag = () => {
       if (!draggingBox || draggingBox.el !== box) return;
       box.classList.remove("dragging");
-
       state.boxLayout[draggingBox.key] = {
         x: parseFloat(box.style.left),
         y: parseFloat(box.style.top)
@@ -797,19 +726,17 @@ function initDepthBoxDragging() {
 function renderRosterEditor() {
   const container = document.getElementById("rosterEditorGrid");
 
-  container.innerHTML = Object.entries(state.roster)
-    .map(([groupKey, players]) => `
-      <div class="editor-card">
-        <div class="editor-card-head">
-          <h3>${rosterMeta[groupKey]}</h3>
-          <button class="add-row-btn" data-group="${groupKey}">Add Player</button>
-        </div>
-        <div class="editor-card-body" data-group-body="${groupKey}">
-          ${players.map((player) => renderPlayerRow(player, groupKey)).join("")}
-        </div>
+  container.innerHTML = Object.entries(state.roster).map(([groupKey, players]) => `
+    <div class="editor-card">
+      <div class="editor-card-head">
+        <h3>${rosterMeta[groupKey]}</h3>
+        <button class="add-row-btn" data-group="${groupKey}">Add Player</button>
       </div>
-    `)
-    .join("");
+      <div class="editor-card-body" data-group-body="${groupKey}">
+        ${players.map((player) => renderPlayerRow(player, groupKey)).join("")}
+      </div>
+    </div>
+  `).join("");
 
   bindRosterEditorControls();
 }
@@ -835,11 +762,7 @@ function renderPlayerRow(player, groupKey) {
         <div class="secondary-positions">
           ${FIELD_POSITIONS.map((pos) => `
             <label class="secondary-pill">
-              <input
-                type="checkbox"
-                data-secondary="${pos}"
-                ${player.secondaryPositions.includes(pos) ? "checked" : ""}
-              />
+              <input type="checkbox" data-secondary="${pos}" ${player.secondaryPositions.includes(pos) ? "checked" : ""} />
               <span>${pos}</span>
             </label>
           `).join("")}
@@ -872,8 +795,8 @@ function bindRosterEditorControls() {
       player.name = e.target.value;
       rememberPlayer(player);
       renderDepthChart();
-      queueCloudSave();
       renderStatsTable();
+      queueCloudSave();
     });
   });
 
@@ -893,7 +816,6 @@ function bindRosterEditorControls() {
       const row = e.target.closest(".player-row");
       const player = findRosterPlayer(row.dataset.group, row.dataset.id);
       if (!player) return;
-
       const pos = e.target.dataset.secondary;
       const next = new Set(player.secondaryPositions);
       if (e.target.checked) next.add(pos);
@@ -927,9 +849,7 @@ function initRosterDragAndDrop() {
       rosterDrag = null;
     });
 
-    row.addEventListener("dragover", (e) => {
-      e.preventDefault();
-    });
+    row.addEventListener("dragover", (e) => e.preventDefault());
 
     row.addEventListener("drop", (e) => {
       e.preventDefault();
@@ -937,8 +857,7 @@ function initRosterDragAndDrop() {
 
       const targetId = row.dataset.id;
       const group = row.dataset.group;
-      if (group !== rosterDrag.group) return;
-      if (targetId === rosterDrag.id) return;
+      if (group !== rosterDrag.group || targetId === rosterDrag.id) return;
 
       const arr = state.roster[group];
       const fromIndex = arr.findIndex((p) => p.id === rosterDrag.id);
@@ -997,9 +916,7 @@ function saveTransactionFromForm() {
     reverseTransactionFromRoster(existing);
 
     state.transactions = state.transactions.map((item) =>
-      item.id === editingTransactionId
-        ? { ...item, ...tx }
-        : item
+      item.id === editingTransactionId ? { ...item, ...tx } : item
     );
 
     applyTransactionToRoster(tx);
@@ -1014,10 +931,7 @@ function saveTransactionFromForm() {
   }
 
   if (tx.acquiredPlayer) {
-    rememberPlayer({
-      name: tx.acquiredPlayer,
-      primaryPos: tx.acquiredSlot || "UTIL"
-    });
+    rememberPlayer({ name: tx.acquiredPlayer, primaryPos: tx.acquiredSlot || "UTIL" });
   }
 
   state.transactions = getSortedTransactions();
@@ -1066,7 +980,7 @@ function reverseTransactionFromRoster(tx) {
 
 function rebuildRosterWithoutTransaction(excludedId) {
   const roster = deepClone(defaultState.roster);
-  const sorted = getSortedTransactions().filter((t) => (excludedId ? t.id !== excludedId : true));
+  const sorted = getSortedTransactions().filter((t) => excludedId ? t.id !== excludedId : true);
 
   for (const tx of sorted) {
     if (tx.removedPlayer) {
@@ -1104,29 +1018,27 @@ function renderTransactions() {
   const list = document.getElementById("transactionList");
   const txs = getSortedTransactions();
 
-  list.innerHTML = txs
-    .map((t) => `
-      <div class="transaction-card">
-        <div class="transaction-main">
-          <div class="transaction-topline">
-            <div class="transaction-opponent">${escapeHtml(t.opponent || "Unknown Opponent")}</div>
-            <div class="result-badge ${resultClass(t.result)}">${escapeHtml(t.result || "—")}</div>
-            <div class="transaction-date">${escapeHtml(t.date || "")}</div>
-          </div>
-          <div class="transaction-details">
-            <div><strong>Acquired:</strong> ${escapeHtml(t.acquiredPlayer || "—")}</div>
-            <div><strong>Primary Position:</strong> ${escapeHtml(t.acquiredSlot || "—")}</div>
-            <div><strong>Removed:</strong> ${escapeHtml(t.removedPlayer || "—")}</div>
-            <div><strong>Notes:</strong> ${escapeHtml(t.notes || "—")}</div>
-          </div>
+  list.innerHTML = txs.map((t) => `
+    <div class="transaction-card">
+      <div class="transaction-main">
+        <div class="transaction-topline">
+          <div class="transaction-opponent">${escapeHtml(t.opponent || "Unknown Opponent")}</div>
+          <div class="result-badge ${resultClass(t.result)}">${escapeHtml(t.result || "—")}</div>
+          <div class="transaction-date">${escapeHtml(t.date || "")}</div>
         </div>
-        <div class="transaction-actions">
-          <button class="edit-btn" data-action="edit-transaction" data-id="${t.id}">Edit</button>
-          <button class="delete-btn" data-action="delete-transaction" data-id="${t.id}">Delete</button>
+        <div class="transaction-details">
+          <div><strong>Acquired:</strong> ${escapeHtml(t.acquiredPlayer || "—")}</div>
+          <div><strong>Primary Position:</strong> ${escapeHtml(t.acquiredSlot || "—")}</div>
+          <div><strong>Removed:</strong> ${escapeHtml(t.removedPlayer || "—")}</div>
+          <div><strong>Notes:</strong> ${escapeHtml(t.notes || "—")}</div>
         </div>
       </div>
-    `)
-    .join("");
+      <div class="transaction-actions">
+        <button class="edit-btn" data-action="edit-transaction" data-id="${t.id}">Edit</button>
+        <button class="delete-btn" data-action="delete-transaction" data-id="${t.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
 
   list.querySelectorAll("[data-action='edit-transaction']").forEach((btn) => {
     btn.addEventListener("click", () => startTransactionEdit(btn.dataset.id));
@@ -1158,36 +1070,10 @@ function cancelTransactionEdit() {
   bindTransactionFormValues();
 }
 
-function inferGroupFromPrimaryPos(pos) {
-  const s = String(pos || "").toUpperCase();
-  if (s.startsWith("SP")) return "rotation";
-  if (["CL", "SU", "RP", "LHP", "RHP"].some((x) => s.includes(x))) return "bullpen";
-  if (["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"].includes(s)) return "lineup";
-  return "bench";
-}
-
-function normalize(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function resultClass(result) {
-  const normalized = String(result || "").toLowerCase();
-  if (normalized === "win") return "win";
-  if (normalized === "loss") return "loss";
-  return "tie";
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value);
+async function fetchJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 function setStatsStatus(message) {
@@ -1204,28 +1090,16 @@ function historyTypeForPlayer(player) {
   return PITCHER_PRIMARY_POSITIONS.has(pos) ? "pitcher" : "hitter";
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
 async function ensureStatsDirectory() {
   if (statsDirectory) return statsDirectory;
-
   setStatsStatus("Loading MLB player directory...");
-  const url = `${MLB_API_BASE}/sports/1/players?season=${CURRENT_SEASON}`;
-  const data = await fetchJson(url);
+  const data = await fetchJson(`${MLB_API_BASE}/sports/1/players?season=${CURRENT_SEASON}`);
   const map = new Map();
 
   for (const player of data.people || []) {
     const key = normalize(player.fullName);
     if (!key) continue;
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
+    if (!map.has(key)) map.set(key, []);
     map.get(key).push(player);
   }
 
@@ -1235,7 +1109,6 @@ async function ensureStatsDirectory() {
 
 async function ensureRealAtlIds() {
   if (realAtlIds.size) return realAtlIds;
-
   const data = await fetchJson(`${MLB_API_BASE}/teams/${BRAVES_TEAM_ID}/roster?rosterType=active`);
   realAtlIds = new Set((data.roster || []).map((p) => p.person?.id).filter(Boolean));
   return realAtlIds;
@@ -1243,19 +1116,13 @@ async function ensureRealAtlIds() {
 
 function choosePlayerRecordByType(records, preferredType) {
   if (!records?.length) return null;
-
-  const pitcherish = preferredType === "pitcher";
   let candidates = [...records];
 
-  if (pitcherish) {
-    const filtered = candidates.filter((p) =>
-      (p.primaryPosition?.abbreviation || "").includes("P")
-    );
+  if (preferredType === "pitcher") {
+    const filtered = candidates.filter((p) => (p.primaryPosition?.abbreviation || "").includes("P"));
     if (filtered.length) candidates = filtered;
   } else {
-    const filtered = candidates.filter((p) =>
-      !(p.primaryPosition?.abbreviation || "").includes("P")
-    );
+    const filtered = candidates.filter((p) => !(p.primaryPosition?.abbreviation || "").includes("P"));
     if (filtered.length) candidates = filtered;
   }
 
@@ -1264,7 +1131,6 @@ function choosePlayerRecordByType(records, preferredType) {
 
 async function resolveHistoryIds() {
   await ensureStatsDirectory();
-
   let changed = false;
 
   for (const player of state.playerHistory) {
@@ -1277,21 +1143,12 @@ async function resolveHistoryIds() {
     }
   }
 
-  if (changed) {
-    queueCloudSave();
-  }
+  if (changed) queueCloudSave();
 }
 
 function extractStatSplit(data) {
   const splits = data?.stats?.[0]?.splits || [];
   return splits[0]?.stat || {};
-}
-
-function formatDecimal(value, digits = 3) {
-  if (value === null || value === undefined || value === "") return "";
-  const num = Number(value);
-  if (Number.isNaN(num)) return String(value);
-  return num.toFixed(digits);
 }
 
 function numOrZero(value) {
@@ -1300,25 +1157,24 @@ function numOrZero(value) {
 }
 
 async function fetchPlayerSeasonStats(player) {
+  const type = historyTypeForPlayer(player);
   if (!player.mlbId) {
     return {
       id: player.id,
       mlbId: null,
       name: player.name,
       team: "",
-      type: historyTypeForPlayer(player),
+      type,
       isRealAtl: false,
-      ...emptyStatsForType(historyTypeForPlayer(player))
+      ...emptyStatsForType(type)
     };
   }
 
-  const cacheKey = `${player.mlbId}-${historyTypeForPlayer(player)}`;
+  const cacheKey = `${player.mlbId}-${type}`;
   if (statsCache.has(cacheKey)) return statsCache.get(cacheKey);
 
-  const type = historyTypeForPlayer(player);
   const group = type === "pitcher" ? "pitching" : "hitting";
-  const url = `${MLB_API_BASE}/people/${player.mlbId}/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&hydrate=currentTeam`;
-  const data = await fetchJson(url);
+  const data = await fetchJson(`${MLB_API_BASE}/people/${player.mlbId}/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&hydrate=currentTeam`);
   const stat = extractStatSplit(data);
   const personData = data?.people?.[0] || {};
   const teamName = personData?.currentTeam?.abbreviation || personData?.currentTeam?.name || "";
@@ -1333,14 +1189,9 @@ async function fetchPlayerSeasonStats(player) {
 
 function emptyStatsForType(type) {
   if (type === "pitcher") {
-    return {
-      G: 0, GS: 0, IP: "0.0", ERA: "", WHIP: "", H: 0, ER: 0, HR: 0, BB: 0, SO: 0, SV: 0, K9: "", BB9: "", HR9: ""
-    };
+    return { G: 0, GS: 0, IP: "0.0", ERA: "", WHIP: "", H: 0, ER: 0, HR: 0, BB: 0, SO: 0, SV: 0, K9: "", BB9: "", HR9: "" };
   }
-
-  return {
-    G: 0, PA: 0, AB: 0, R: 0, H: 0, "2B": 0, "3B": 0, HR: 0, RBI: 0, BB: 0, SO: 0, SB: 0, CS: 0, AVG: "", OBP: "", SLG: "", OPS: ""
-  };
+  return { G: 0, PA: 0, AB: 0, R: 0, H: 0, "2B": 0, "3B": 0, HR: 0, RBI: 0, BB: 0, SO: 0, SB: 0, CS: 0, AVG: "", OBP: "", SLG: "", OPS: "" };
 }
 
 function buildHitterRow(player, stat, teamName) {
@@ -1406,10 +1257,8 @@ async function refreshStats() {
 
     const history = [...state.playerHistory].filter((p) => normalize(p.name));
     const rows = [];
-
     for (const player of history) {
-      const row = await fetchPlayerSeasonStats(player);
-      rows.push(row);
+      rows.push(await fetchPlayerSeasonStats(player));
     }
 
     statsView = rows;
@@ -1435,14 +1284,10 @@ function getFilteredStatsRows() {
     rows = rows.filter((row) => row.isRealAtl);
   }
 
-  if (typeFilter === "hitters") {
-    rows = rows.filter((row) => row.type === "hitter");
-  } else if (typeFilter === "pitchers") {
-    rows = rows.filter((row) => row.type === "pitcher");
-  }
+  if (typeFilter === "hitters") rows = rows.filter((row) => row.type === "hitter");
+  if (typeFilter === "pitchers") rows = rows.filter((row) => row.type === "pitcher");
 
   rows.sort((a, b) => compareStatsRows(a, b, statsSort.key, statsSort.direction));
-
   return rows;
 }
 
@@ -1455,10 +1300,7 @@ function compareStatsRows(a, b, key, direction) {
   const bn = Number(bv);
   const bothNumeric = !Number.isNaN(an) && !Number.isNaN(bn) && av !== "" && bv !== "";
 
-  if (bothNumeric) {
-    return (an - bn) * dir;
-  }
-
+  if (bothNumeric) return (an - bn) * dir;
   return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
 }
 
@@ -1469,13 +1311,14 @@ function renderStatsTable() {
 
   const rows = getFilteredStatsRows();
   const typeFilter = document.getElementById("statsTypeFilter")?.value || "all";
-  const mixed = typeFilter === "all";
-  const hasPitchers = rows.some((r) => r.type === "pitcher");
-  const hasHitters = rows.some((r) => r.type === "hitter");
 
   let columns;
-  if (mixed) {
-    columns = hasHitters && !hasPitchers ? HITTER_COLUMNS : hasPitchers && !hasHitters ? PITCHER_COLUMNS : [
+  if (typeFilter === "hitters") {
+    columns = HITTER_COLUMNS;
+  } else if (typeFilter === "pitchers") {
+    columns = PITCHER_COLUMNS;
+  } else {
+    columns = [
       { key: "name", label: "Player" },
       { key: "type", label: "Type" },
       { key: "team", label: "Team" },
@@ -1488,8 +1331,6 @@ function renderStatsTable() {
       { key: "SO", label: "SO" },
       { key: "SV", label: "SV" }
     ];
-  } else {
-    columns = typeFilter === "pitchers" ? PITCHER_COLUMNS : HITTER_COLUMNS;
   }
 
   thead.innerHTML = `
@@ -1529,4 +1370,36 @@ function renderStatsCell(row, key) {
     return `<td><span class="stats-type-pill ${row.type}">${escapeHtml(row.type)}</span></td>`;
   }
   return `<td>${escapeHtml(row[key] ?? "")}</td>`;
+}
+
+function inferGroupFromPrimaryPos(pos) {
+  const s = String(pos || "").toUpperCase();
+  if (s.startsWith("SP")) return "rotation";
+  if (["CL", "SU", "RP", "LHP", "RHP"].some((x) => s.includes(x))) return "bullpen";
+  if (["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"].includes(s)) return "lineup";
+  return "bench";
+}
+
+function normalize(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function resultClass(result) {
+  const normalized = String(result || "").toLowerCase();
+  if (normalized === "win") return "win";
+  if (normalized === "loss") return "loss";
+  return "tie";
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
 }
