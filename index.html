@@ -13,12 +13,16 @@
 <body>
   <div class="page-shell">
     <header class="app-hero">
-      <div>
-        <div class="eyebrow">Braves Today</div>
-        <h1>Braves Imperialism Tracker</h1>
-        <p>
-          Manage your 26-man imperialism roster, edit transactions, and export a social-ready depth chart.
-        </p>
+      <div class="hero-left">
+        <img src="./logo.png" alt="Braves Today logo" class="hero-logo" />
+        <div>
+          <div class="eyebrow">Braves Today</div>
+          <h1>Braves Imperialism Tracker</h1>
+          <p>
+            Manage your 26-man imperialism roster, log series transactions, drag your depth chart into a clean layout,
+            and export a social-ready graphic.
+          </p>
+        </div>
       </div>
 
       <div class="hero-badges">
@@ -38,67 +42,73 @@
         <div class="panel-toolbar">
           <div>
             <h2>Shareable Depth Chart</h2>
-            <p>Designed for a clean square export that works well on X and Instagram.</p>
+            <p>Drag the boxes anywhere you want, then export a clean square graphic.</p>
           </div>
           <div class="toolbar-actions">
+            <button class="secondary-button" id="resetDepthLayoutBtn">Reset Layout</button>
             <button class="primary-button" id="downloadChartBtn">Download PNG</button>
           </div>
         </div>
 
         <div class="chart-wrap">
-          <div id="depthChartExport" class="depth-chart-export">
-            <div class="chart-topbar"></div>
+          <div class="depth-chart-frame">
+            <div id="depthChartExport" class="depth-chart-export">
+              <div class="chart-topbar"></div>
 
-            <div class="chart-header">
-              <div class="chart-title-block">
-                <div class="chart-kicker">Braves Today Imperialism</div>
-                <div class="chart-title">Field Depth Chart</div>
-                <div class="chart-subtitle">Live 26-man conquest roster</div>
+              <div class="chart-header">
+                <div class="chart-header-left">
+                  <img src="./logo.png" alt="Braves Today logo" class="chart-logo" />
+                  <div class="chart-title-block">
+                    <div class="chart-kicker">Braves Today Imperialism</div>
+                    <div class="chart-title">Field Depth Chart</div>
+                    <div class="chart-subtitle">Live 26-man conquest roster</div>
+                  </div>
+                </div>
+                <div class="chart-badge">2026</div>
               </div>
-              <div class="chart-badge">2026</div>
-            </div>
 
-            <div class="field-sky"></div>
-            <div class="field-outfield-arc"></div>
-            <div class="field-grass"></div>
-            <div class="field-infield-dirt"></div>
-            <div class="field-inner-dirt"></div>
-            <div class="field-mound"></div>
-            <div class="field-homeplate"></div>
-            <div class="foul-line foul-line-left"></div>
-            <div class="foul-line foul-line-right"></div>
-            <div class="infield-line infield-line-left"></div>
-            <div class="infield-line infield-line-right"></div>
-            <div class="grass-stripe stripe-1"></div>
-            <div class="grass-stripe stripe-2"></div>
-            <div class="grass-stripe stripe-3"></div>
-            <div class="grass-stripe stripe-4"></div>
-            <div class="grass-stripe stripe-5"></div>
+              <div class="field-sky"></div>
+              <div class="field-outfield-arc"></div>
+              <div class="field-grass"></div>
+              <div class="field-infield-dirt"></div>
+              <div class="field-inner-dirt"></div>
+              <div class="field-mound"></div>
+              <div class="field-homeplate"></div>
+              <div class="foul-line foul-line-left"></div>
+              <div class="foul-line foul-line-right"></div>
+              <div class="infield-line infield-line-left"></div>
+              <div class="infield-line infield-line-right"></div>
+              <div class="grass-stripe stripe-1"></div>
+              <div class="grass-stripe stripe-2"></div>
+              <div class="grass-stripe stripe-3"></div>
+              <div class="grass-stripe stripe-4"></div>
+              <div class="grass-stripe stripe-5"></div>
 
-            <div class="pos-card pos-lf" id="pos-lf"></div>
-            <div class="pos-card pos-cf" id="pos-cf"></div>
-            <div class="pos-card pos-rf" id="pos-rf"></div>
+              <div class="depth-box pos-box green" data-box="LF"><div id="box-LF"></div></div>
+              <div class="depth-box pos-box green" data-box="CF"><div id="box-CF"></div></div>
+              <div class="depth-box pos-box purple" data-box="RF"><div id="box-RF"></div></div>
 
-            <div class="pos-card pos-3b" id="pos-3b"></div>
-            <div class="pos-card pos-ss" id="pos-ss"></div>
-            <div class="pos-card pos-2b" id="pos-2b"></div>
-            <div class="pos-card pos-1b" id="pos-1b"></div>
+              <div class="depth-box pos-box purple" data-box="3B"><div id="box-3B"></div></div>
+              <div class="depth-box pos-box navy" data-box="SS"><div id="box-SS"></div></div>
+              <div class="depth-box pos-box green" data-box="2B"><div id="box-2B"></div></div>
+              <div class="depth-box pos-box navy" data-box="1B"><div id="box-1B"></div></div>
 
-            <div class="pos-card pos-c" id="pos-c"></div>
+              <div class="depth-box pos-box red" data-box="C"><div id="box-C"></div></div>
 
-            <div class="staff-card bullpen-card">
-              <div class="staff-title bullpen-title">Bullpen</div>
-              <div id="bullpenList" class="staff-list"></div>
-            </div>
+              <div class="depth-box staff-box bullpen-box" data-box="BULLPEN">
+                <div class="staff-title bullpen-title">Bullpen</div>
+                <div id="bullpenList"></div>
+              </div>
 
-            <div class="staff-card rotation-card">
-              <div class="staff-title rotation-title">Rotation</div>
-              <div id="rotationList" class="staff-list"></div>
-            </div>
+              <div class="depth-box staff-box rotation-box" data-box="ROTATION">
+                <div class="staff-title rotation-title">Rotation</div>
+                <div id="rotationList"></div>
+              </div>
 
-            <div class="chart-footer">
-              <div>Braves Imperialism Tracker</div>
-              <div id="chartFooterCount">26 Players Loaded</div>
+              <div class="chart-footer">
+                <div>Braves Imperialism Tracker</div>
+                <div id="chartFooterCount">26 Players Loaded</div>
+              </div>
             </div>
           </div>
         </div>
@@ -108,7 +118,7 @@
         <div class="panel-toolbar">
           <div>
             <h2>Roster Editor</h2>
-            <p>Edit players, positions, and contract/type column. Everything auto-saves in your browser.</p>
+            <p>Drag players to reorder them. Primary position controls their main slot. Secondary positions place them at the bottom of those depth charts.</p>
           </div>
         </div>
 
@@ -119,7 +129,7 @@
         <div class="panel-toolbar">
           <div>
             <h2>Transactions</h2>
-            <p>Add, edit, or delete prior series results.</p>
+            <p>Transactions are saved and always displayed in chronological order.</p>
           </div>
         </div>
 
@@ -153,6 +163,21 @@
             <label>
               <span>Acquired Player</span>
               <input type="text" id="txAcquiredPlayer" placeholder="Bobby Witt Jr." />
+            </label>
+
+            <label>
+              <span>Acquired Primary Position</span>
+              <select id="txAcquiredSlot"></select>
+            </label>
+
+            <label>
+              <span>Acquired Group</span>
+              <select id="txAcquiredGroup">
+                <option value="lineup">Starting 8</option>
+                <option value="bench">Bench</option>
+                <option value="rotation">Rotation</option>
+                <option value="bullpen">Bullpen</option>
+              </select>
             </label>
 
             <label>
