@@ -1,5 +1,8 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v6";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v7";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
+const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
+const CURRENT_SEASON = new Date().getFullYear();
+const BRAVES_TEAM_ID = 144;
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZmJoandrYWl6b2d3b2NnZ2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzQ0NTIsImV4cCI6MjA5MTY1MDQ1Mn0.LzRTgsSATpEmNvQH1meXeGtZfZ5Nu0yc5_GF4_TUntM";
@@ -14,6 +17,8 @@ const POSITION_OPTIONS = [
 ];
 
 const FIELD_POSITIONS = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+const HITTER_PRIMARY_POSITIONS = new Set(["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH", "UTIL", "INF", "OF"]);
+const PITCHER_PRIMARY_POSITIONS = new Set(["SP1", "SP2", "SP3", "SP4", "SP5", "CL", "SU", "RP", "LHP", "RHP"]);
 
 const DEFAULT_BOX_LAYOUT = {
   LF: { x: 28, y: 188 },
@@ -34,6 +39,49 @@ const rosterMeta = {
   rotation: "Rotation",
   bullpen: "Bullpen"
 };
+
+const HITTER_COLUMNS = [
+  { key: "name", label: "Player" },
+  { key: "type", label: "Type" },
+  { key: "team", label: "Team" },
+  { key: "G", label: "G" },
+  { key: "PA", label: "PA" },
+  { key: "AB", label: "AB" },
+  { key: "R", label: "R" },
+  { key: "H", label: "H" },
+  { key: "2B", label: "2B" },
+  { key: "3B", label: "3B" },
+  { key: "HR", label: "HR" },
+  { key: "RBI", label: "RBI" },
+  { key: "BB", label: "BB" },
+  { key: "SO", label: "SO" },
+  { key: "SB", label: "SB" },
+  { key: "CS", label: "CS" },
+  { key: "AVG", label: "AVG" },
+  { key: "OBP", label: "OBP" },
+  { key: "SLG", label: "SLG" },
+  { key: "OPS", label: "OPS" }
+];
+
+const PITCHER_COLUMNS = [
+  { key: "name", label: "Player" },
+  { key: "type", label: "Type" },
+  { key: "team", label: "Team" },
+  { key: "G", label: "G" },
+  { key: "GS", label: "GS" },
+  { key: "IP", label: "IP" },
+  { key: "ERA", label: "ERA" },
+  { key: "WHIP", label: "WHIP" },
+  { key: "H", label: "H" },
+  { key: "ER", label: "ER" },
+  { key: "HR", label: "HR" },
+  { key: "BB", label: "BB" },
+  { key: "SO", label: "SO" },
+  { key: "SV", label: "SV" },
+  { key: "K9", label: "K/9" },
+  { key: "BB9", label: "BB/9" },
+  { key: "HR9", label: "HR/9" }
+];
 
 const defaultState = {
   roster: {
@@ -76,7 +124,7 @@ const defaultState = {
     {
       id: makeId(),
       createdAt: Date.now() - 3000,
-      date: "2026-04-01",
+      date: `${CURRENT_SEASON}-04-01`,
       opponent: "Royals",
       result: "Win",
       acquiredPlayer: "Bobby Witt Jr.",
@@ -88,7 +136,7 @@ const defaultState = {
     {
       id: makeId(),
       createdAt: Date.now() - 2000,
-      date: "2026-04-03",
+      date: `${CURRENT_SEASON}-04-03`,
       opponent: "Athletics",
       result: "Win",
       acquiredPlayer: "Luis Severino",
@@ -100,7 +148,7 @@ const defaultState = {
     {
       id: makeId(),
       createdAt: Date.now() - 1000,
-      date: "2026-04-05",
+      date: `${CURRENT_SEASON}-04-05`,
       opponent: "Angels",
       result: "Win",
       acquiredPlayer: "Jose Soriano",
@@ -110,10 +158,13 @@ const defaultState = {
       notes: "Soriano added to the rotation."
     }
   ],
-  boxLayout: structuredClone(DEFAULT_BOX_LAYOUT)
+  boxLayout: structuredClone(DEFAULT_BOX_LAYOUT),
+  playerHistory: []
 };
 
 let state = loadLocalState();
+ensurePlayerHistory();
+
 let editingTransactionId = null;
 let draggingBox = null;
 let rosterDrag = null;
@@ -121,6 +172,13 @@ let currentUser = null;
 let cloudSaveTimer = null;
 let suppressCloudSave = false;
 let isHydratingFromCloud = false;
+
+let statsDirectory = null;
+let realAtlIds = new Set();
+let statsCache = new Map();
+let statsView = [];
+let statsSort = { key: "name", direction: "asc" };
+let statsLoadedOnce = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   setSyncStatus("Sync: starting...");
@@ -131,6 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindDownload();
   bindLayoutReset();
   bindAuthControls();
+  bindStatsControls();
 
   renderAll();
   initDepthBoxDragging();
@@ -153,29 +212,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 });
-
-async function initializeSession() {
-  try {
-    const { data, error } = await supabaseClient.auth.getSession();
-
-    if (error) {
-      console.error("Session load failed:", error);
-      setSyncStatus(`Sync failed: ${error.message}`);
-      return;
-    }
-
-    currentUser = data.session?.user ?? null;
-    updateAuthUI();
-
-    if (currentUser) {
-      await loadStateFromSupabase();
-      renderAll();
-    }
-  } catch (err) {
-    console.error("Startup failed:", err);
-    setSyncStatus(`Sync failed: ${err.message || "startup error"}`);
-  }
-}
 
 function makeId() {
   return Math.random().toString(36).slice(2, 10);
@@ -202,7 +238,8 @@ function loadLocalState() {
     return {
       roster: normalizeRoster(parsed.roster || defaultState.roster),
       transactions: normalizeTransactions(parsed.transactions || defaultState.transactions),
-      boxLayout: normalizeBoxLayout(parsed.boxLayout || DEFAULT_BOX_LAYOUT)
+      boxLayout: normalizeBoxLayout(parsed.boxLayout || DEFAULT_BOX_LAYOUT),
+      playerHistory: normalizePlayerHistory(parsed.playerHistory || [])
     };
   } catch {
     return deepClone(defaultState);
@@ -251,6 +288,68 @@ function normalizeBoxLayout(layout) {
   return normalized;
 }
 
+function normalizePlayerHistory(history) {
+  return (Array.isArray(history) ? history : []).map((p) => ({
+    id: p.id || makeId(),
+    name: p.name || "",
+    primaryPos: p.primaryPos || "UTIL",
+    mlbId: p.mlbId || null
+  }));
+}
+
+function ensurePlayerHistory() {
+  if (!Array.isArray(state.playerHistory)) state.playerHistory = [];
+
+  const seen = new Set(state.playerHistory.map((p) => normalize(p.name)));
+
+  for (const player of Object.values(state.roster).flat()) {
+    const key = normalize(player.name);
+    if (!key) continue;
+    if (!seen.has(key)) {
+      state.playerHistory.push({
+        id: makeId(),
+        name: player.name,
+        primaryPos: player.primaryPos,
+        mlbId: null
+      });
+      seen.add(key);
+    }
+  }
+
+  for (const tx of state.transactions) {
+    const name = (tx.acquiredPlayer || "").trim();
+    if (!name) continue;
+    const key = normalize(name);
+    if (!seen.has(key)) {
+      state.playerHistory.push({
+        id: makeId(),
+        name,
+        primaryPos: tx.acquiredSlot || "UTIL",
+        mlbId: null
+      });
+      seen.add(key);
+    }
+  }
+}
+
+function rememberPlayer(player) {
+  const key = normalize(player.name);
+  if (!key) return;
+  const existing = state.playerHistory.find((p) => normalize(p.name) === key);
+  if (existing) {
+    if (!existing.primaryPos && player.primaryPos) existing.primaryPos = player.primaryPos;
+    if (!existing.mlbId && player.mlbId) existing.mlbId = player.mlbId;
+    return;
+  }
+
+  state.playerHistory.push({
+    id: makeId(),
+    name: player.name,
+    primaryPos: player.primaryPos || "UTIL",
+    mlbId: player.mlbId || null
+  });
+}
+
 function saveLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -287,7 +386,8 @@ async function saveStateToSupabase() {
   const payload = {
     roster: state.roster,
     transactions: state.transactions,
-    boxLayout: state.boxLayout
+    boxLayout: state.boxLayout,
+    playerHistory: state.playerHistory
   };
 
   const { error } = await supabaseClient
@@ -335,8 +435,10 @@ async function loadStateFromSupabase() {
       state = {
         roster: normalizeRoster(data.data.roster || defaultState.roster),
         transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
-        boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT)
+        boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT),
+        playerHistory: normalizePlayerHistory(data.data.playerHistory || [])
       };
+      ensurePlayerHistory();
       saveLocalState();
       setSyncStatus("Sync: loaded");
     } else {
@@ -349,6 +451,29 @@ async function loadStateFromSupabase() {
   } finally {
     suppressCloudSave = false;
     isHydratingFromCloud = false;
+  }
+}
+
+async function initializeSession() {
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+
+    if (error) {
+      console.error("Session load failed:", error);
+      setSyncStatus(`Sync failed: ${error.message}`);
+      return;
+    }
+
+    currentUser = data.session?.user ?? null;
+    updateAuthUI();
+
+    if (currentUser) {
+      await loadStateFromSupabase();
+      renderAll();
+    }
+  } catch (err) {
+    console.error("Startup failed:", err);
+    setSyncStatus(`Sync failed: ${err.message || "startup error"}`);
   }
 }
 
@@ -413,12 +538,16 @@ function bindTabs() {
   const panels = document.querySelectorAll(".tab-panel");
 
   buttons.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const tab = button.dataset.tab;
       buttons.forEach((b) => b.classList.remove("active"));
       panels.forEach((p) => p.classList.remove("active"));
       button.classList.add("active");
       document.getElementById(`tab-${tab}`).classList.add("active");
+
+      if (tab === "stats" && !statsLoadedOnce) {
+        await refreshStats();
+      }
     });
   });
 }
@@ -467,11 +596,19 @@ function bindLayoutReset() {
   });
 }
 
+function bindStatsControls() {
+  document.getElementById("refreshStatsBtn").addEventListener("click", refreshStats);
+  document.getElementById("statsScopeFilter").addEventListener("change", renderStatsTable);
+  document.getElementById("statsTypeFilter").addEventListener("change", renderStatsTable);
+}
+
 function renderAll() {
+  ensurePlayerHistory();
   renderCounts();
   renderDepthChart();
   renderRosterEditor();
   renderTransactions();
+  renderStatsTable();
   queueCloudSave();
 }
 
@@ -720,7 +857,9 @@ function bindRosterEditorControls() {
   document.querySelectorAll(".add-row-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const group = btn.dataset.group;
-      state.roster[group].push(makePlayer("", defaultPrimaryPos(group)));
+      const player = makePlayer("", defaultPrimaryPos(group));
+      state.roster[group].push(player);
+      rememberPlayer(player);
       renderAll();
     });
   });
@@ -731,8 +870,10 @@ function bindRosterEditorControls() {
       const player = findRosterPlayer(row.dataset.group, row.dataset.id);
       if (!player) return;
       player.name = e.target.value;
+      rememberPlayer(player);
       renderDepthChart();
       queueCloudSave();
+      renderStatsTable();
     });
   });
 
@@ -742,6 +883,7 @@ function bindRosterEditorControls() {
       const player = findRosterPlayer(row.dataset.group, row.dataset.id);
       if (!player) return;
       player.primaryPos = e.target.value;
+      rememberPlayer(player);
       renderAll();
     });
   });
@@ -871,6 +1013,13 @@ function saveTransactionFromForm() {
     applyTransactionToRoster(fullTx);
   }
 
+  if (tx.acquiredPlayer) {
+    rememberPlayer({
+      name: tx.acquiredPlayer,
+      primaryPos: tx.acquiredSlot || "UTIL"
+    });
+  }
+
   state.transactions = getSortedTransactions();
   cancelTransactionEdit();
   renderAll();
@@ -892,7 +1041,9 @@ function applyTransactionToRoster(tx) {
     );
 
     if (!exists) {
-      state.roster[group].push(makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group)));
+      const player = makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group));
+      state.roster[group].push(player);
+      rememberPlayer(player);
     }
   }
 }
@@ -1037,4 +1188,345 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+function setStatsStatus(message) {
+  const el = document.getElementById("statsStatus");
+  if (el) el.textContent = message;
+}
+
+function currentRosterNamesSet() {
+  return new Set(Object.values(state.roster).flat().map((p) => normalize(p.name)).filter(Boolean));
+}
+
+function historyTypeForPlayer(player) {
+  const pos = String(player.primaryPos || "").toUpperCase();
+  return PITCHER_PRIMARY_POSITIONS.has(pos) ? "pitcher" : "hitter";
+}
+
+async function fetchJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function ensureStatsDirectory() {
+  if (statsDirectory) return statsDirectory;
+
+  setStatsStatus("Loading MLB player directory...");
+  const url = `${MLB_API_BASE}/sports/1/players?season=${CURRENT_SEASON}`;
+  const data = await fetchJson(url);
+  const map = new Map();
+
+  for (const player of data.people || []) {
+    const key = normalize(player.fullName);
+    if (!key) continue;
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(player);
+  }
+
+  statsDirectory = map;
+  return statsDirectory;
+}
+
+async function ensureRealAtlIds() {
+  if (realAtlIds.size) return realAtlIds;
+
+  const data = await fetchJson(`${MLB_API_BASE}/teams/${BRAVES_TEAM_ID}/roster?rosterType=active`);
+  realAtlIds = new Set((data.roster || []).map((p) => p.person?.id).filter(Boolean));
+  return realAtlIds;
+}
+
+function choosePlayerRecordByType(records, preferredType) {
+  if (!records?.length) return null;
+
+  const pitcherish = preferredType === "pitcher";
+  let candidates = [...records];
+
+  if (pitcherish) {
+    const filtered = candidates.filter((p) =>
+      (p.primaryPosition?.abbreviation || "").includes("P")
+    );
+    if (filtered.length) candidates = filtered;
+  } else {
+    const filtered = candidates.filter((p) =>
+      !(p.primaryPosition?.abbreviation || "").includes("P")
+    );
+    if (filtered.length) candidates = filtered;
+  }
+
+  return candidates[0] || records[0];
+}
+
+async function resolveHistoryIds() {
+  await ensureStatsDirectory();
+
+  let changed = false;
+
+  for (const player of state.playerHistory) {
+    if (player.mlbId) continue;
+    const records = statsDirectory.get(normalize(player.name));
+    const chosen = choosePlayerRecordByType(records, historyTypeForPlayer(player));
+    if (chosen?.id) {
+      player.mlbId = chosen.id;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    queueCloudSave();
+  }
+}
+
+function extractStatSplit(data) {
+  const splits = data?.stats?.[0]?.splits || [];
+  return splits[0]?.stat || {};
+}
+
+function formatDecimal(value, digits = 3) {
+  if (value === null || value === undefined || value === "") return "";
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return num.toFixed(digits);
+}
+
+function numOrZero(value) {
+  const num = Number(value);
+  return Number.isNaN(num) ? 0 : num;
+}
+
+async function fetchPlayerSeasonStats(player) {
+  if (!player.mlbId) {
+    return {
+      id: player.id,
+      mlbId: null,
+      name: player.name,
+      team: "",
+      type: historyTypeForPlayer(player),
+      isRealAtl: false,
+      ...emptyStatsForType(historyTypeForPlayer(player))
+    };
+  }
+
+  const cacheKey = `${player.mlbId}-${historyTypeForPlayer(player)}`;
+  if (statsCache.has(cacheKey)) return statsCache.get(cacheKey);
+
+  const type = historyTypeForPlayer(player);
+  const group = type === "pitcher" ? "pitching" : "hitting";
+  const url = `${MLB_API_BASE}/people/${player.mlbId}/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&hydrate=currentTeam`;
+  const data = await fetchJson(url);
+  const stat = extractStatSplit(data);
+  const personData = data?.people?.[0] || {};
+  const teamName = personData?.currentTeam?.abbreviation || personData?.currentTeam?.name || "";
+
+  const row = type === "pitcher"
+    ? buildPitcherRow(player, stat, teamName)
+    : buildHitterRow(player, stat, teamName);
+
+  statsCache.set(cacheKey, row);
+  return row;
+}
+
+function emptyStatsForType(type) {
+  if (type === "pitcher") {
+    return {
+      G: 0, GS: 0, IP: "0.0", ERA: "", WHIP: "", H: 0, ER: 0, HR: 0, BB: 0, SO: 0, SV: 0, K9: "", BB9: "", HR9: ""
+    };
+  }
+
+  return {
+    G: 0, PA: 0, AB: 0, R: 0, H: 0, "2B": 0, "3B": 0, HR: 0, RBI: 0, BB: 0, SO: 0, SB: 0, CS: 0, AVG: "", OBP: "", SLG: "", OPS: ""
+  };
+}
+
+function buildHitterRow(player, stat, teamName) {
+  return {
+    id: player.id,
+    mlbId: player.mlbId,
+    name: player.name,
+    team: teamName,
+    type: "hitter",
+    isRealAtl: realAtlIds.has(player.mlbId),
+    G: numOrZero(stat.gamesPlayed),
+    PA: numOrZero(stat.plateAppearances),
+    AB: numOrZero(stat.atBats),
+    R: numOrZero(stat.runs),
+    H: numOrZero(stat.hits),
+    "2B": numOrZero(stat.doubles),
+    "3B": numOrZero(stat.triples),
+    HR: numOrZero(stat.homeRuns),
+    RBI: numOrZero(stat.rbi),
+    BB: numOrZero(stat.baseOnBalls),
+    SO: numOrZero(stat.strikeOuts),
+    SB: numOrZero(stat.stolenBases),
+    CS: numOrZero(stat.caughtStealing),
+    AVG: stat.avg || "",
+    OBP: stat.obp || "",
+    SLG: stat.slg || "",
+    OPS: stat.ops || ""
+  };
+}
+
+function buildPitcherRow(player, stat, teamName) {
+  return {
+    id: player.id,
+    mlbId: player.mlbId,
+    name: player.name,
+    team: teamName,
+    type: "pitcher",
+    isRealAtl: realAtlIds.has(player.mlbId),
+    G: numOrZero(stat.gamesPlayed),
+    GS: numOrZero(stat.gamesStarted),
+    IP: stat.inningsPitched || "0.0",
+    ERA: stat.era || "",
+    WHIP: stat.whip || "",
+    H: numOrZero(stat.hits),
+    ER: numOrZero(stat.earnedRuns),
+    HR: numOrZero(stat.homeRuns),
+    BB: numOrZero(stat.baseOnBalls),
+    SO: numOrZero(stat.strikeOuts),
+    SV: numOrZero(stat.saves),
+    K9: stat.strikeoutsPer9Inn || "",
+    BB9: stat.walksPer9Inn || "",
+    HR9: stat.homeRunsPer9 || ""
+  };
+}
+
+async function refreshStats() {
+  setStatsStatus("Refreshing stats...");
+  try {
+    ensurePlayerHistory();
+    await ensureStatsDirectory();
+    await ensureRealAtlIds();
+    await resolveHistoryIds();
+
+    const history = [...state.playerHistory].filter((p) => normalize(p.name));
+    const rows = [];
+
+    for (const player of history) {
+      const row = await fetchPlayerSeasonStats(player);
+      rows.push(row);
+    }
+
+    statsView = rows;
+    statsLoadedOnce = true;
+    setStatsStatus(`Loaded ${rows.length} players`);
+    renderStatsTable();
+  } catch (err) {
+    console.error("refreshStats failed:", err);
+    setStatsStatus(`Failed: ${err.message || "stats error"}`);
+  }
+}
+
+function getFilteredStatsRows() {
+  const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
+  const typeFilter = document.getElementById("statsTypeFilter")?.value || "all";
+  const ourTeamNames = currentRosterNamesSet();
+
+  let rows = [...statsView];
+
+  if (scope === "our_team") {
+    rows = rows.filter((row) => ourTeamNames.has(normalize(row.name)));
+  } else if (scope === "real_atl") {
+    rows = rows.filter((row) => row.isRealAtl);
+  }
+
+  if (typeFilter === "hitters") {
+    rows = rows.filter((row) => row.type === "hitter");
+  } else if (typeFilter === "pitchers") {
+    rows = rows.filter((row) => row.type === "pitcher");
+  }
+
+  rows.sort((a, b) => compareStatsRows(a, b, statsSort.key, statsSort.direction));
+
+  return rows;
+}
+
+function compareStatsRows(a, b, key, direction) {
+  const dir = direction === "asc" ? 1 : -1;
+  const av = a[key];
+  const bv = b[key];
+
+  const an = Number(av);
+  const bn = Number(bv);
+  const bothNumeric = !Number.isNaN(an) && !Number.isNaN(bn) && av !== "" && bv !== "";
+
+  if (bothNumeric) {
+    return (an - bn) * dir;
+  }
+
+  return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+}
+
+function renderStatsTable() {
+  const thead = document.getElementById("statsThead");
+  const tbody = document.getElementById("statsTbody");
+  if (!thead || !tbody) return;
+
+  const rows = getFilteredStatsRows();
+  const typeFilter = document.getElementById("statsTypeFilter")?.value || "all";
+  const mixed = typeFilter === "all";
+  const hasPitchers = rows.some((r) => r.type === "pitcher");
+  const hasHitters = rows.some((r) => r.type === "hitter");
+
+  let columns;
+  if (mixed) {
+    columns = hasHitters && !hasPitchers ? HITTER_COLUMNS : hasPitchers && !hasHitters ? PITCHER_COLUMNS : [
+      { key: "name", label: "Player" },
+      { key: "type", label: "Type" },
+      { key: "team", label: "Team" },
+      { key: "G", label: "G" },
+      { key: "HR", label: "HR" },
+      { key: "RBI", label: "RBI" },
+      { key: "AVG", label: "AVG" },
+      { key: "ERA", label: "ERA" },
+      { key: "WHIP", label: "WHIP" },
+      { key: "SO", label: "SO" },
+      { key: "SV", label: "SV" }
+    ];
+  } else {
+    columns = typeFilter === "pitchers" ? PITCHER_COLUMNS : HITTER_COLUMNS;
+  }
+
+  thead.innerHTML = `
+    <tr>
+      ${columns.map((col) => `
+        <th data-sort-key="${col.key}">
+          ${escapeHtml(col.label)}${statsSort.key === col.key ? (statsSort.direction === "asc" ? " ▲" : " ▼") : ""}
+        </th>
+      `).join("")}
+    </tr>
+  `;
+
+  tbody.innerHTML = rows.length
+    ? rows.map((row) => `
+        <tr>
+          ${columns.map((col) => renderStatsCell(row, col.key)).join("")}
+        </tr>
+      `).join("")
+    : `<tr><td colspan="${columns.length}">No players match the current filter.</td></tr>`;
+
+  thead.querySelectorAll("[data-sort-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sortKey;
+      if (statsSort.key === key) {
+        statsSort.direction = statsSort.direction === "asc" ? "desc" : "asc";
+      } else {
+        statsSort.key = key;
+        statsSort.direction = key === "name" ? "asc" : "desc";
+      }
+      renderStatsTable();
+    });
+  });
+}
+
+function renderStatsCell(row, key) {
+  if (key === "type") {
+    return `<td><span class="stats-type-pill ${row.type}">${escapeHtml(row.type)}</span></td>`;
+  }
+  return `<td>${escapeHtml(row[key] ?? "")}</td>`;
 }
