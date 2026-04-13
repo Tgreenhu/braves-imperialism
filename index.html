@@ -2,24 +2,180 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Braves Imperialism Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- html2canvas -->
+  <title>Braves Imperialism Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
+<body>
+  <div class="page-shell">
+    <header class="app-hero">
+      <div>
+        <div class="eyebrow">Braves Today</div>
+        <h1>Braves Imperialism Tracker</h1>
+        <p>
+          Manage your 26-man imperialism roster, edit transactions, and export a social-ready depth chart.
+        </p>
+      </div>
 
-<body class="bg-gray-100">
-  <div id="root"></div>
+      <div class="hero-badges">
+        <div class="hero-badge">GitHub Pages</div>
+        <div class="hero-badge" id="totalPlayersBadge">26 Players Loaded</div>
+      </div>
+    </header>
 
-  <script type="text/babel" src="./app.js"></script>
+    <nav class="tabs">
+      <button class="tab-button active" data-tab="depth">Depth Chart</button>
+      <button class="tab-button" data-tab="roster">Roster Editor</button>
+      <button class="tab-button" data-tab="transactions">Transactions</button>
+    </nav>
+
+    <main>
+      <section class="tab-panel active" id="tab-depth">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Shareable Depth Chart</h2>
+            <p>Designed for a clean square export that works well on X and Instagram.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="primary-button" id="downloadChartBtn">Download PNG</button>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <div id="depthChartExport" class="depth-chart-export">
+            <div class="chart-topbar"></div>
+
+            <div class="chart-header">
+              <div class="chart-title-block">
+                <div class="chart-kicker">Braves Today Imperialism</div>
+                <div class="chart-title">Field Depth Chart</div>
+                <div class="chart-subtitle">Live 26-man conquest roster</div>
+              </div>
+              <div class="chart-badge">2026</div>
+            </div>
+
+            <div class="field-sky"></div>
+            <div class="field-outfield-arc"></div>
+            <div class="field-grass"></div>
+            <div class="field-infield-dirt"></div>
+            <div class="field-inner-dirt"></div>
+            <div class="field-mound"></div>
+            <div class="field-homeplate"></div>
+            <div class="foul-line foul-line-left"></div>
+            <div class="foul-line foul-line-right"></div>
+            <div class="infield-line infield-line-left"></div>
+            <div class="infield-line infield-line-right"></div>
+            <div class="grass-stripe stripe-1"></div>
+            <div class="grass-stripe stripe-2"></div>
+            <div class="grass-stripe stripe-3"></div>
+            <div class="grass-stripe stripe-4"></div>
+            <div class="grass-stripe stripe-5"></div>
+
+            <div class="pos-card pos-lf" id="pos-lf"></div>
+            <div class="pos-card pos-cf" id="pos-cf"></div>
+            <div class="pos-card pos-rf" id="pos-rf"></div>
+
+            <div class="pos-card pos-3b" id="pos-3b"></div>
+            <div class="pos-card pos-ss" id="pos-ss"></div>
+            <div class="pos-card pos-2b" id="pos-2b"></div>
+            <div class="pos-card pos-1b" id="pos-1b"></div>
+
+            <div class="pos-card pos-c" id="pos-c"></div>
+
+            <div class="staff-card bullpen-card">
+              <div class="staff-title bullpen-title">Bullpen</div>
+              <div id="bullpenList" class="staff-list"></div>
+            </div>
+
+            <div class="staff-card rotation-card">
+              <div class="staff-title rotation-title">Rotation</div>
+              <div id="rotationList" class="staff-list"></div>
+            </div>
+
+            <div class="chart-footer">
+              <div>Braves Imperialism Tracker</div>
+              <div id="chartFooterCount">26 Players Loaded</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-roster">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Roster Editor</h2>
+            <p>Edit players, positions, and contract/type column. Everything auto-saves in your browser.</p>
+          </div>
+        </div>
+
+        <div class="editor-grid" id="rosterEditorGrid"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-transactions">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Transactions</h2>
+            <p>Add, edit, or delete prior series results.</p>
+          </div>
+        </div>
+
+        <div class="transaction-editor-card">
+          <div class="transaction-editor-header">
+            <h3 id="transactionFormTitle">Add Transaction</h3>
+            <button class="secondary-button hidden" id="cancelEditBtn">Cancel Edit</button>
+          </div>
+
+          <div class="transaction-form-grid">
+            <label>
+              <span>Date</span>
+              <input type="date" id="txDate" />
+            </label>
+
+            <label>
+              <span>Opponent</span>
+              <input type="text" id="txOpponent" placeholder="Phillies" />
+            </label>
+
+            <label>
+              <span>Result</span>
+              <select id="txResult">
+                <option value="">Select result</option>
+                <option value="Win">Win</option>
+                <option value="Loss">Loss</option>
+                <option value="Tie">Tie</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Acquired Player</span>
+              <input type="text" id="txAcquiredPlayer" placeholder="Bobby Witt Jr." />
+            </label>
+
+            <label>
+              <span>Removed Player</span>
+              <input type="text" id="txRemovedPlayer" placeholder="Kyle Farmer" />
+            </label>
+
+            <label class="notes-field">
+              <span>Notes</span>
+              <textarea id="txNotes" rows="4" placeholder="Installed Bobby Witt Jr. at shortstop."></textarea>
+            </label>
+          </div>
+
+          <div class="transaction-form-actions">
+            <button class="primary-button" id="saveTransactionBtn">Save Transaction</button>
+          </div>
+        </div>
+
+        <div id="transactionList" class="transaction-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
 </body>
 </html>
