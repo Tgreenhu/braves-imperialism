@@ -69,7 +69,7 @@ button {
 
 .app-hero h1 {
   margin: 0;
-  font-size: 40px;
+  font-size: clamp(28px, 4vw, 40px);
   line-height: 1.05;
   font-weight: 800;
 }
@@ -197,14 +197,17 @@ button {
 }
 
 .chart-wrap {
-  overflow-x: auto;
-  padding-bottom: 12px;
+  width: 100%;
+}
+
+.depth-chart-frame {
+  width: min(100%, 1080px);
+  margin: 0 auto;
 }
 
 .depth-chart-export {
-  width: 1080px;
-  height: 1080px;
-  margin: 0 auto;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   position: relative;
   overflow: hidden;
   border-radius: 30px;
@@ -218,40 +221,41 @@ button {
 .chart-topbar {
   position: absolute;
   inset: 0 0 auto 0;
-  height: 92px;
+  height: 8.5%;
   background: linear-gradient(90deg, var(--navy) 0%, #264b83 50%, var(--red) 100%);
 }
 
 .chart-header {
   position: absolute;
   z-index: 5;
-  top: 28px;
-  left: 28px;
-  right: 28px;
+  top: 2.6%;
+  left: 2.6%;
+  right: 2.6%;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
 }
 
 .chart-kicker {
   color: rgba(255,255,255,0.72);
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  font-size: 11px;
+  font-size: clamp(8px, 0.95vw, 11px);
   font-weight: 700;
   margin-bottom: 8px;
 }
 
 .chart-title {
   color: var(--white);
-  font-size: 34px;
+  font-size: clamp(18px, 3vw, 34px);
   font-weight: 800;
   line-height: 1.05;
 }
 
 .chart-subtitle {
   color: rgba(255,255,255,0.9);
-  font-size: 14px;
+  font-size: clamp(9px, 1.2vw, 14px);
   margin-top: 8px;
 }
 
@@ -259,28 +263,29 @@ button {
   color: var(--navy);
   background: var(--gold);
   font-weight: 800;
-  font-size: 13px;
+  font-size: clamp(10px, 1.1vw, 13px);
   border-radius: 999px;
   padding: 10px 14px;
   box-shadow: 0 10px 24px rgba(234, 170, 0, 0.28);
+  white-space: nowrap;
 }
 
 .field-sky {
   position: absolute;
-  inset: 92px 0 auto 0;
-  height: 210px;
+  inset: 8.5% 0 auto 0;
+  height: 20%;
   background: linear-gradient(180deg, rgba(170,215,255,0.75) 0%, rgba(170,215,255,0.05) 100%);
 }
 
 .field-outfield-arc {
   position: absolute;
   left: 50%;
-  top: 150px;
-  width: 1260px;
-  height: 660px;
+  top: 14%;
+  width: 116%;
+  height: 61%;
   transform: translateX(-50%);
-  border-radius: 0 0 630px 630px;
-  border: 4px solid rgba(255,255,255,0.28);
+  border-radius: 0 0 50% 50%;
+  border: 0.4% solid rgba(255,255,255,0.22);
   border-top: 0;
   opacity: 0.45;
 }
@@ -288,9 +293,9 @@ button {
 .field-grass {
   position: absolute;
   left: 50%;
-  top: 210px;
-  width: 920px;
-  height: 620px;
+  top: 19%;
+  width: 85%;
+  height: 57%;
   transform: translateX(-50%);
   border-radius: 50% 50% 40% 40%;
   background: radial-gradient(circle at 50% 52%, rgba(92,190,95,0.6) 0%, rgba(38,118,49,0.0) 72%);
@@ -300,26 +305,26 @@ button {
 .grass-stripe {
   position: absolute;
   left: 50%;
-  width: 660px;
-  height: 90px;
+  width: 61%;
+  height: 8.5%;
   transform: translateX(-50%);
   border-radius: 999px;
-  opacity: 0.12;
+  opacity: 0.1;
   background: rgba(255,255,255,0.45);
 }
 
-.stripe-1 { top: 328px; }
-.stripe-2 { top: 420px; }
-.stripe-3 { top: 512px; }
-.stripe-4 { top: 604px; }
-.stripe-5 { top: 696px; }
+.stripe-1 { top: 30%; }
+.stripe-2 { top: 38.5%; }
+.stripe-3 { top: 47%; }
+.stripe-4 { top: 55.5%; }
+.stripe-5 { top: 64%; }
 
 .field-infield-dirt {
   position: absolute;
   left: 50%;
-  top: 548px;
-  width: 330px;
-  height: 330px;
+  top: 50.5%;
+  width: 30.5%;
+  height: 30.5%;
   transform: translate(-50%, -50%) rotate(45deg);
   background: linear-gradient(180deg, #aa7751 0%, var(--dirt-1) 100%);
   border-radius: 10px;
@@ -329,9 +334,9 @@ button {
 .field-inner-dirt {
   position: absolute;
   left: 50%;
-  top: 548px;
-  width: 208px;
-  height: 208px;
+  top: 50.5%;
+  width: 19.2%;
+  height: 19.2%;
   transform: translate(-50%, -50%) rotate(45deg);
   background: linear-gradient(180deg, #855235 0%, var(--dirt-2) 100%);
   border-radius: 8px;
@@ -341,9 +346,9 @@ button {
 .field-mound {
   position: absolute;
   left: 50%;
-  top: 648px;
-  width: 66px;
-  height: 66px;
+  top: 60%;
+  width: 6.1%;
+  height: 6.1%;
   transform: translateX(-50%);
   border-radius: 999px;
   background: radial-gradient(circle at 50% 40%, #ba865d 0%, #8a5637 100%);
@@ -353,9 +358,9 @@ button {
 .field-homeplate {
   position: absolute;
   left: 50%;
-  bottom: 130px;
-  width: 36px;
-  height: 26px;
+  bottom: 12%;
+  width: 3.3%;
+  height: 2.4%;
   transform: translateX(-50%);
   background: var(--white);
   clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
@@ -365,7 +370,7 @@ button {
 .foul-line,
 .infield-line {
   position: absolute;
-  height: 3px;
+  height: 0.25%;
   background: rgba(255,255,255,0.42);
   transform-origin: left center;
   border-radius: 999px;
@@ -373,37 +378,37 @@ button {
 
 .foul-line-left {
   left: 50%;
-  bottom: 142px;
-  width: 520px;
-  transform: translateX(-12px) rotate(-136deg);
+  bottom: 13%;
+  width: 48%;
+  transform: translateX(-1.2%) rotate(-136deg);
 }
 
 .foul-line-right {
   left: 50%;
-  bottom: 142px;
-  width: 520px;
-  transform: translateX(12px) rotate(-44deg);
+  bottom: 13%;
+  width: 48%;
+  transform: translateX(1.2%) rotate(-44deg);
 }
 
 .infield-line-left {
   left: 50%;
-  top: 550px;
-  width: 232px;
-  transform: translateX(-14px) rotate(-136deg);
+  top: 50.6%;
+  width: 21.5%;
+  transform: translateX(-1.1%) rotate(-136deg);
 }
 
 .infield-line-right {
   left: 50%;
-  top: 550px;
-  width: 232px;
-  transform: translateX(14px) rotate(-44deg);
+  top: 50.6%;
+  width: 21.5%;
+  transform: translateX(1.1%) rotate(-44deg);
 }
 
 .pos-card,
 .staff-card {
   position: absolute;
   z-index: 3;
-  background: rgba(255,255,255,0.95);
+  background: rgba(255,255,255,0.96);
   border: 1px solid rgba(219,227,239,0.95);
   border-radius: 18px;
   box-shadow: 0 12px 28px rgba(19, 39, 79, 0.1);
@@ -411,40 +416,41 @@ button {
 }
 
 .pos-card {
-  width: 250px;
-  padding: 14px 14px 12px;
+  width: 20%;
+  min-width: 0;
+  padding: 1.15% 1.15% 1%;
 }
 
-.pos-lf { left: 30px; top: 186px; }
-.pos-cf { left: 50%; top: 122px; transform: translateX(-50%); width: 280px; }
-.pos-rf { right: 30px; top: 186px; }
+.pos-lf { left: 2.8%; top: 18%; }
+.pos-cf { left: 50%; top: 12%; transform: translateX(-50%); width: 23%; }
+.pos-rf { right: 2.8%; top: 18%; }
 
-.pos-3b { left: 34px; top: 490px; }
-.pos-ss { left: 220px; top: 380px; width: 220px; }
-.pos-2b { right: 220px; top: 380px; width: 220px; }
-.pos-1b { right: 34px; top: 490px; }
+.pos-3b { left: 3.2%; top: 45.5%; }
+.pos-ss { left: 20.8%; top: 35.8%; width: 17.5%; }
+.pos-2b { right: 20.8%; top: 35.8%; width: 17.5%; }
+.pos-1b { right: 3.2%; top: 45.5%; }
 
 .pos-c {
   left: 50%;
-  bottom: 44px;
+  bottom: 5.2%;
   transform: translateX(-50%);
-  width: 300px;
+  width: 24%;
 }
 
 .staff-card {
-  padding: 16px;
+  padding: 1.4%;
 }
 
 .bullpen-card {
-  left: 34px;
-  top: 690px;
-  width: 350px;
+  left: 3.2%;
+  top: 66%;
+  width: 30%;
 }
 
 .rotation-card {
-  right: 34px;
-  top: 690px;
-  width: 300px;
+  right: 3.2%;
+  top: 66%;
+  width: 26%;
 }
 
 .pos-head,
@@ -452,7 +458,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 0.6vw;
 }
 
 .pos-label,
@@ -460,7 +466,7 @@ button {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 12px;
+  font-size: clamp(9px, 0.95vw, 12px);
 }
 
 .pos-card.red .pos-label,
@@ -486,14 +492,14 @@ button {
 
 .pos-mini-head {
   display: grid;
-  grid-template-columns: 42px 1fr 50px;
+  grid-template-columns: 42px 1fr;
   gap: 8px;
-  font-size: 10px;
+  font-size: clamp(8px, 0.75vw, 10px);
   font-weight: 800;
   color: #7a889f;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 6px;
+  margin-bottom: 0.35vw;
 }
 
 .pos-row,
@@ -504,22 +510,22 @@ button {
 }
 
 .pos-row {
-  grid-template-columns: 42px 1fr 50px;
-  font-size: 13px;
-  line-height: 1.35;
-  padding: 4px 0;
+  grid-template-columns: 42px 1fr;
+  font-size: clamp(10px, 1vw, 13px);
+  line-height: 1.2;
+  padding: 0.18vw 0;
 }
 
 .staff-row.rotation-row {
-  grid-template-columns: 48px 1fr 50px;
-  font-size: 13px;
-  padding: 4px 0;
+  grid-template-columns: 48px 1fr;
+  font-size: clamp(10px, 1vw, 13px);
+  padding: 0.2vw 0;
 }
 
 .staff-row.bullpen-row {
   grid-template-columns: 44px 1fr;
-  font-size: 13px;
-  padding: 4px 0;
+  font-size: clamp(10px, 1vw, 13px);
+  padding: 0.2vw 0;
 }
 
 .row-pos {
@@ -530,23 +536,21 @@ button {
 .row-name {
   font-weight: 700;
   color: var(--navy);
-}
-
-.row-tc {
-  color: #60708a;
-  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chart-footer {
   position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 16px;
+  left: 2.2%;
+  right: 2.2%;
+  bottom: 1.6%;
   z-index: 4;
   display: flex;
   justify-content: space-between;
   color: rgba(255,255,255,0.92);
-  font-size: 12px;
+  font-size: clamp(8px, 0.9vw, 12px);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -596,7 +600,7 @@ button {
 
 .player-row {
   display: grid;
-  grid-template-columns: 1.8fr 0.7fr 0.8fr auto;
+  grid-template-columns: 1.9fr 0.9fr auto;
   gap: 10px;
   align-items: center;
   background: linear-gradient(180deg, #fffdfa 0%, #fff7eb 100%);
@@ -791,6 +795,10 @@ button {
 }
 
 @media (max-width: 760px) {
+  .page-shell {
+    padding: 18px 12px 40px;
+  }
+
   .tabs {
     grid-template-columns: 1fr;
   }
@@ -809,5 +817,9 @@ button {
 
   .hero-badges {
     justify-content: flex-start;
+  }
+
+  .depth-chart-export {
+    border-radius: 18px;
   }
 }
