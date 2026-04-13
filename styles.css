@@ -74,6 +74,13 @@ textarea {
   align-items: flex-start;
 }
 
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+}
+
 .hero-logo {
   width: 72px;
   height: 72px;
@@ -122,6 +129,48 @@ textarea {
   font-size: 13px;
   font-weight: 700;
   backdrop-filter: blur(8px);
+}
+
+.auth-card {
+  background: rgba(8, 17, 31, 0.42);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.auth-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.auth-row-bottom {
+  margin-top: 10px;
+  justify-content: space-between;
+}
+
+.auth-card input {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.22);
+  border-radius: 12px;
+  padding: 11px 12px;
+  color: var(--text);
+  outline: none;
+}
+
+.auth-card input:focus {
+  border-color: #7aa6ef;
+  box-shadow: 0 0 0 3px rgba(122,166,239,0.16);
+}
+
+.auth-status {
+  font-size: 12px;
+  color: #d6e5ff;
+}
+
+.auth-btn {
+  white-space: nowrap;
 }
 
 .tabs {
@@ -613,6 +662,10 @@ textarea {
   padding: 10px;
 }
 
+.player-row.dragging {
+  opacity: 0.65;
+}
+
 .drag-handle {
   width: 24px;
   height: 40px;
@@ -622,10 +675,6 @@ textarea {
   font-size: 18px;
   cursor: grab;
   user-select: none;
-}
-
-.player-row.dragging {
-  opacity: 0.65;
 }
 
 .player-row input,
@@ -826,6 +875,11 @@ textarea {
   .hero-badges {
     justify-content: flex-start;
   }
+
+  .hero-right {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 @media (max-width: 880px) {
@@ -874,5 +928,10 @@ textarea {
   .pos-box,
   .staff-box {
     width: 180px;
+  }
+
+  .auth-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
