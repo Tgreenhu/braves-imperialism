@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v2";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v3";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
@@ -234,10 +234,20 @@ function saveLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function setSyncStatus(message) {
+  const el = document.getElementById("syncStatus");
+  if (el) el.textContent = message;
+}
+
 function queueCloudSave() {
   saveLocalState();
 
-  if (suppressCloudSave || !currentUser) return;
+  if (suppressCloudSave) return;
+
+  if (!currentUser) {
+    setSyncStatus("Sync: local only");
+    return;
+  }
 
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(async () => {
@@ -246,7 +256,12 @@ function queueCloudSave() {
 }
 
 async function saveStateToSupabase() {
-  if (!currentUser) return;
+  if (!currentUser) {
+    setSyncStatus("Sync: local only");
+    return;
+  }
+
+  setSyncStatus("Sync: saving...");
 
   const payload = {
     roster: state.roster,
@@ -267,13 +282,18 @@ async function saveStateToSupabase() {
 
   if (error) {
     console.error("Supabase save failed:", error);
+    setSyncStatus(`Sync failed: ${error.message}`);
+    return;
   }
+
+  setSyncStatus("Sync: saved");
 }
 
 async function loadStateFromSupabase() {
   if (!currentUser) return;
 
   suppressCloudSave = true;
+  setSyncStatus("Sync: loading...");
 
   const { data, error } = await supabaseClient
     .from("tracker_states")
@@ -284,6 +304,7 @@ async function loadStateFromSupabase() {
 
   if (error) {
     console.error("Supabase load failed:", error);
+    setSyncStatus(`Sync failed: ${error.message}`);
     suppressCloudSave = false;
     return;
   }
@@ -294,7 +315,9 @@ async function loadStateFromSupabase() {
       transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
       boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT)
     };
+    setSyncStatus("Sync: loaded");
   } else {
+    setSyncStatus("Sync: first save...");
     await saveStateToSupabase();
   }
 
@@ -309,9 +332,11 @@ function updateAuthUI() {
   if (currentUser) {
     authStatus.textContent = `Signed in as ${currentUser.email}`;
     signOutBtn.classList.remove("hidden");
+    setSyncStatus("Sync: connected");
   } else {
     authStatus.textContent = "Not signed in";
     signOutBtn.classList.add("hidden");
+    setSyncStatus("Sync: local only");
   }
 }
 
