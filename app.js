@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v4";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v5";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
@@ -131,10 +131,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindLayoutReset();
   bindAuthControls();
 
-  if (window.location.href.includes("access_token") || window.location.hash.includes("access_token")) {
-    console.log("Supabase auth callback detected");
-  }
-
   renderAll();
   initDepthBoxDragging();
 
@@ -257,7 +253,6 @@ function queueCloudSave() {
   saveLocalState();
 
   if (suppressCloudSave) {
-    setSyncStatus("Sync: paused");
     return;
   }
 
@@ -312,34 +307,38 @@ async function loadStateFromSupabase() {
   suppressCloudSave = true;
   setSyncStatus("Sync: loading...");
 
-  const { data, error } = await supabaseClient
-    .from("tracker_states")
-    .select("data")
-    .eq("user_id", currentUser.id)
-    .eq("name", "default")
-    .maybeSingle();
+  try {
+    const { data, error } = await supabaseClient
+      .from("tracker_states")
+      .select("data")
+      .eq("user_id", currentUser.id)
+      .eq("name", "default")
+      .maybeSingle();
 
-  if (error) {
-    console.error("Supabase load failed:", error);
-    setSyncStatus(`Sync failed: ${error.message}`);
+    if (error) {
+      console.error("Supabase load failed:", error);
+      setSyncStatus(`Sync failed: ${error.message}`);
+      return;
+    }
+
+    if (data?.data) {
+      state = {
+        roster: normalizeRoster(data.data.roster || defaultState.roster),
+        transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
+        boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT)
+      };
+      saveLocalState();
+      setSyncStatus("Sync: loaded");
+    } else {
+      setSyncStatus("Sync: first save...");
+      await saveStateToSupabase();
+    }
+  } catch (err) {
+    console.error("loadStateFromSupabase exception:", err);
+    setSyncStatus(`Sync failed: ${err.message || "load error"}`);
+  } finally {
     suppressCloudSave = false;
-    return;
   }
-
-  if (data?.data) {
-    state = {
-      roster: normalizeRoster(data.data.roster || defaultState.roster),
-      transactions: normalizeTransactions(data.data.transactions || defaultState.transactions),
-      boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT)
-    };
-    setSyncStatus("Sync: loaded");
-  } else {
-    setSyncStatus("Sync: first save...");
-    await saveStateToSupabase();
-  }
-
-  saveLocalState();
-  suppressCloudSave = false;
 }
 
 function updateAuthUI() {
