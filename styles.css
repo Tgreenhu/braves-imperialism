@@ -26,8 +26,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Inter", sans-serif;
-  background:
-    radial-gradient(circle at top, #142640 0%, #0a1422 45%, #070d17 100%);
+  background: radial-gradient(circle at top, #142640 0%, #0a1422 45%, #070d17 100%);
   color: var(--text);
 }
 
@@ -286,8 +285,7 @@ textarea {
   overflow: hidden;
   border-radius: 30px;
   border: 1px solid #1f3150;
-  background:
-    radial-gradient(circle at 50% 62%, var(--green-1) 0%, var(--green-2) 58%, var(--green-3) 100%);
+  background: radial-gradient(circle at 50% 62%, var(--green-1) 0%, var(--green-2) 58%, var(--green-3) 100%);
   box-shadow: var(--shadow);
 }
 
@@ -501,7 +499,7 @@ textarea {
   border-radius: 18px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(8px);
-  padding: 12px;
+  padding: 14px 12px 12px;
   touch-action: none;
   user-select: none;
 }
@@ -534,19 +532,6 @@ textarea {
 .bullpen-title {
   color: #ffd44d;
 }
-
-.depth-title {
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 12px;
-  margin-bottom: 8px;
-}
-
-.pos-box.red .depth-title { color: #ff6b8c; }
-.pos-box.green .depth-title { color: #4ade80; }
-.pos-box.purple .depth-title { color: #c084fc; }
-.pos-box.navy .depth-title { color: #8eb8ff; }
 
 .depth-row,
 .staff-row {
