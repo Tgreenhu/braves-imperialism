@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v5";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v6";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 
 const SUPABASE_URL = "https://tufbhjwkaizogwocggcz.supabase.co";
@@ -120,6 +120,7 @@ let rosterDrag = null;
 let currentUser = null;
 let cloudSaveTimer = null;
 let suppressCloudSave = false;
+let isHydratingFromCloud = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   setSyncStatus("Sync: starting...");
@@ -134,6 +135,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAll();
   initDepthBoxDragging();
 
+  await initializeSession();
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    currentUser = session?.user ?? null;
+    updateAuthUI();
+
+    if (event === "SIGNED_IN") {
+      setTimeout(async () => {
+        await loadStateFromSupabase();
+        renderAll();
+      }, 0);
+    }
+
+    if (event === "SIGNED_OUT") {
+      setSyncStatus("Sync: local only");
+    }
+  });
+});
+
+async function initializeSession() {
   try {
     const { data, error } = await supabaseClient.auth.getSession();
 
@@ -154,17 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("Startup failed:", err);
     setSyncStatus(`Sync failed: ${err.message || "startup error"}`);
   }
-
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    currentUser = session?.user ?? null;
-    updateAuthUI();
-
-    if (currentUser) {
-      await loadStateFromSupabase();
-      renderAll();
-    }
-  });
-});
+}
 
 function makeId() {
   return Math.random().toString(36).slice(2, 10);
@@ -252,9 +263,7 @@ function setSyncStatus(message) {
 function queueCloudSave() {
   saveLocalState();
 
-  if (suppressCloudSave) {
-    return;
-  }
+  if (suppressCloudSave || isHydratingFromCloud) return;
 
   if (!currentUser) {
     setSyncStatus("Sync: local only");
@@ -304,6 +313,7 @@ async function saveStateToSupabase() {
 async function loadStateFromSupabase() {
   if (!currentUser) return;
 
+  isHydratingFromCloud = true;
   suppressCloudSave = true;
   setSyncStatus("Sync: loading...");
 
@@ -338,6 +348,7 @@ async function loadStateFromSupabase() {
     setSyncStatus(`Sync failed: ${err.message || "load error"}`);
   } finally {
     suppressCloudSave = false;
+    isHydratingFromCloud = false;
   }
 }
 
