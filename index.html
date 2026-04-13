@@ -21,7 +21,7 @@
           <h1>Braves Imperialism Tracker</h1>
           <p>
             Manage your 26-man imperialism roster, log transactions, drag the depth chart into a clean layout,
-            and sync everything across devices with Supabase.
+            sync everything across devices with Supabase, and track season stats for everyone who has ever appeared on your roster.
           </p>
         </div>
       </div>
@@ -46,10 +46,11 @@
       </div>
     </header>
 
-    <nav class="tabs">
+    <nav class="tabs tabs-4">
       <button class="tab-button active" data-tab="depth">Depth Chart</button>
       <button class="tab-button" data-tab="roster">Roster Editor</button>
       <button class="tab-button" data-tab="transactions">Transactions</button>
+      <button class="tab-button" data-tab="stats">Stats</button>
     </nav>
 
     <main>
@@ -212,6 +213,52 @@
         </div>
 
         <div id="transactionList" class="transaction-list"></div>
+      </section>
+
+      <section class="tab-panel" id="tab-stats">
+        <div class="panel-toolbar">
+          <div>
+            <h2>Stats</h2>
+            <p>Current MLB season stats for every player who has ever been on your tracker.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="secondary-button" id="refreshStatsBtn">Refresh Stats</button>
+          </div>
+        </div>
+
+        <div class="stats-card">
+          <div class="stats-controls">
+            <label class="stats-control">
+              <span>View</span>
+              <select id="statsScopeFilter">
+                <option value="our_team" selected>Our Team</option>
+                <option value="real_atl">Real ATL</option>
+                <option value="all_players">All Players</option>
+              </select>
+            </label>
+
+            <label class="stats-control">
+              <span>Type</span>
+              <select id="statsTypeFilter">
+                <option value="all" selected>All</option>
+                <option value="hitters">Hitters</option>
+                <option value="pitchers">Pitchers</option>
+              </select>
+            </label>
+
+            <div class="stats-status-wrap">
+              <span class="stats-status-label">Status</span>
+              <div id="statsStatus" class="stats-status">Idle</div>
+            </div>
+          </div>
+
+          <div class="stats-table-wrap">
+            <table class="stats-table">
+              <thead id="statsThead"></thead>
+              <tbody id="statsTbody"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
   </div>
