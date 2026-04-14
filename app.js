@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v8";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v9";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -576,7 +576,6 @@ function renderAll() {
 function renderCounts() {
   const total = Object.values(state.roster).flat().length;
   document.getElementById("totalPlayersBadge").textContent = `${total} Players Loaded`;
-  document.getElementById("chartFooterCount").textContent = `${total} Players Loaded`;
 }
 
 function buildDepthMap() {
@@ -849,23 +848,55 @@ function initRosterDragAndDrop() {
       rosterDrag = null;
     });
 
-    row.addEventListener("dragover", (e) => e.preventDefault());
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
 
     row.addEventListener("drop", (e) => {
       e.preventDefault();
       if (!rosterDrag) return;
 
       const targetId = row.dataset.id;
-      const group = row.dataset.group;
-      if (group !== rosterDrag.group || targetId === rosterDrag.id) return;
+      const targetGroup = row.dataset.group;
+      const sourceGroup = rosterDrag.group;
 
-      const arr = state.roster[group];
-      const fromIndex = arr.findIndex((p) => p.id === rosterDrag.id);
-      const toIndex = arr.findIndex((p) => p.id === targetId);
+      if (targetId === rosterDrag.id && targetGroup === sourceGroup) return;
+
+      const sourceArr = state.roster[sourceGroup];
+      const targetArr = state.roster[targetGroup];
+
+      const fromIndex = sourceArr.findIndex((p) => p.id === rosterDrag.id);
+      const toIndex = targetArr.findIndex((p) => p.id === targetId);
+
       if (fromIndex === -1 || toIndex === -1) return;
 
-      const [moved] = arr.splice(fromIndex, 1);
-      arr.splice(toIndex, 0, moved);
+      const [moved] = sourceArr.splice(fromIndex, 1);
+      targetArr.splice(toIndex, 0, moved);
+
+      renderAll();
+    });
+  });
+
+  document.querySelectorAll("[data-group-body]").forEach((body) => {
+    body.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    body.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (!rosterDrag) return;
+
+      const targetGroup = body.dataset.groupBody;
+      const sourceGroup = rosterDrag.group;
+
+      const sourceArr = state.roster[sourceGroup];
+      const targetArr = state.roster[targetGroup];
+
+      const fromIndex = sourceArr.findIndex((p) => p.id === rosterDrag.id);
+      if (fromIndex === -1) return;
+
+      const [moved] = sourceArr.splice(fromIndex, 1);
+      targetArr.push(moved);
 
       renderAll();
     });
@@ -934,7 +965,7 @@ function saveTransactionFromForm() {
     rememberPlayer({ name: tx.acquiredPlayer, primaryPos: tx.acquiredSlot || "UTIL" });
   }
 
-  state.transactions = getSortedTransactions();
+  state.transactions = getTransactionsChronological();
   cancelTransactionEdit();
   renderAll();
 }
@@ -980,7 +1011,7 @@ function reverseTransactionFromRoster(tx) {
 
 function rebuildRosterWithoutTransaction(excludedId) {
   const roster = deepClone(defaultState.roster);
-  const sorted = getSortedTransactions().filter((t) => excludedId ? t.id !== excludedId : true);
+  const sorted = getTransactionsChronological().filter((t) => excludedId ? t.id !== excludedId : true);
 
   for (const tx of sorted) {
     if (tx.removedPlayer) {
@@ -1006,7 +1037,7 @@ function rebuildRosterWithoutTransaction(excludedId) {
   return roster;
 }
 
-function getSortedTransactions() {
+function getTransactionsChronological() {
   return [...state.transactions].sort((a, b) => {
     const byDate = String(a.date || "").localeCompare(String(b.date || ""));
     if (byDate !== 0) return byDate;
@@ -1014,9 +1045,21 @@ function getSortedTransactions() {
   });
 }
 
+function getTransactionsForDisplay() {
+  return [...state.transactions].sort((a, b) => {
+    const byDate = String(b.date || "").localeCompare(String(a.date || ""));
+    if (byDate !== 0) return byDate;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+}
+
+function getSortedTransactions() {
+  return getTransactionsChronological();
+}
+
 function renderTransactions() {
   const list = document.getElementById("transactionList");
-  const txs = getSortedTransactions();
+  const txs = getTransactionsForDisplay();
 
   list.innerHTML = txs.map((t) => `
     <div class="transaction-card">
