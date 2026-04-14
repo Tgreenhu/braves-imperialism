@@ -311,8 +311,14 @@ input, select, textarea { color: var(--text); }
   background: var(--gold);
   font-weight: 800;
   font-size: clamp(10px, 1.1vw, 13px);
+  width: 72px;
+  height: 72px;
   border-radius: 999px;
-  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 72px;
+  line-height: 1;
 }
 
 .field-sky {
@@ -517,11 +523,10 @@ input, select, textarea { color: var(--text); }
 .chart-footer {
   position: absolute;
   left: 2.2%;
-  right: 2.2%;
   bottom: 1.6%;
   z-index: 4;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   color: rgba(255,255,255,0.92);
   font-size: clamp(8px, 0.9vw, 12px);
   font-weight: 700;
@@ -572,6 +577,7 @@ input, select, textarea { color: var(--text); }
   padding: 16px;
   display: grid;
   gap: 10px;
+  min-height: 72px;
 }
 
 .player-row {
@@ -926,7 +932,9 @@ input, select, textarea { color: var(--text); }
 
   .chart-badge {
     align-self: flex-start;
-    padding: 8px 12px;
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
     font-size: 11px;
   }
 
@@ -965,7 +973,7 @@ input, select, textarea { color: var(--text); }
 
   .chart-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 8px 14px 0;
     font-size: 10px;
   }
