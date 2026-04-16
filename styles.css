@@ -770,6 +770,17 @@ input, select, textarea { color: var(--text); }
   margin-bottom: 16px;
 }
 
+.stats-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.stats-toggle .secondary-button.active {
+  background: linear-gradient(180deg, var(--red) 0%, #a90e36 100%);
+  color: var(--white);
+  border-color: rgba(255,255,255,0.08);
+}
+
 .stats-status-wrap {
   display: grid;
   gap: 8px;
@@ -790,6 +801,41 @@ input, select, textarea { color: var(--text); }
   min-height: 44px;
   display: flex;
   align-items: center;
+}
+
+.stats-rank-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rank-card {
+  background: linear-gradient(180deg, rgba(19,33,58,0.85) 0%, rgba(14,24,42,0.92) 100%);
+  border: 1px solid #243754;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.rank-card-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.rank-card-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--white);
+}
+
+.rank-card-sub {
+  margin-top: 6px;
+  color: #cfe0fa;
+  font-size: 13px;
 }
 
 .stats-table-wrap {
@@ -832,6 +878,11 @@ input, select, textarea { color: var(--text); }
   background: rgba(255,255,255,0.03);
 }
 
+.stats-table .team-row {
+  background: rgba(255,255,255,0.06);
+  font-weight: 800;
+}
+
 .stats-type-pill {
   display: inline-flex;
   align-items: center;
@@ -861,6 +912,7 @@ input, select, textarea { color: var(--text); }
   .panel-toolbar { flex-direction: column; align-items: flex-start; }
   .hero-badges { justify-content: flex-start; }
   .hero-right { min-width: 0; width: 100%; }
+  .stats-rank-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 880px) {
@@ -981,6 +1033,10 @@ input, select, textarea { color: var(--text); }
   .stats-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .stats-rank-cards {
+    grid-template-columns: 1fr;
   }
 
   .stats-table { min-width: 920px; }
