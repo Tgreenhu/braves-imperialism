@@ -133,7 +133,7 @@
         <div class="panel-toolbar">
           <div>
             <h2>Roster Editor</h2>
-            <p>Drag players to reorder them. Primary position controls their main slot. Secondary positions place them at the bottom of those depth charts.</p>
+            <p>Drag players to reorder them and move them between lineup, bench, rotation, and bullpen. Secondary positions place them at the bottom of those depth charts.</p>
           </div>
         </div>
 
@@ -144,7 +144,7 @@
         <div class="panel-toolbar">
           <div>
             <h2>Transactions</h2>
-            <p>Transactions are saved chronologically and update the roster and depth chart automatically.</p>
+            <p>Transactions display newest first, but still apply in true chronological order behind the scenes.</p>
           </div>
         </div>
 
@@ -218,7 +218,7 @@
         <div class="panel-toolbar">
           <div>
             <h2>Stats</h2>
-            <p>Season-long MLB stats for every player ever listed on your tracker.</p>
+            <p>Season-long MLB stats for every player ever listed on your tracker, plus team totals and team-vs-MLB ranks.</p>
           </div>
           <div class="toolbar-actions">
             <button class="secondary-button" id="refreshStatsBtn">Refresh Stats</button>
@@ -227,6 +227,11 @@
 
         <div class="stats-card">
           <div class="stats-controls">
+            <div class="stats-toggle">
+              <button id="statsHittersBtn" class="secondary-button active">Hitters</button>
+              <button id="statsPitchersBtn" class="secondary-button">Pitchers</button>
+            </div>
+
             <label class="stats-control">
               <span>View</span>
               <select id="statsScopeFilter">
@@ -236,20 +241,13 @@
               </select>
             </label>
 
-            <label class="stats-control">
-              <span>Type</span>
-              <select id="statsTypeFilter">
-                <option value="all" selected>All</option>
-                <option value="hitters">Hitters</option>
-                <option value="pitchers">Pitchers</option>
-              </select>
-            </label>
-
             <div class="stats-status-wrap">
               <span class="stats-status-label">Status</span>
               <div id="statsStatus" class="stats-status">Idle</div>
             </div>
           </div>
+
+          <div id="statsRankCards" class="stats-rank-cards"></div>
 
           <div class="stats-table-wrap">
             <table class="stats-table">
