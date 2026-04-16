@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v9";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v10";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -142,6 +142,11 @@ let statsCache = new Map();
 let statsView = [];
 let statsSort = { key: "name", direction: "asc" };
 let statsLoadedOnce = false;
+let statsTypeView = "hitters";
+let mlbTeamStatsCache = {
+  hitters: null,
+  pitchers: null
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   setSyncStatus("Sync: starting...");
@@ -156,6 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderAll();
   initDepthBoxDragging();
+  updateStatsToggleUI();
 
   await initializeSession();
 
@@ -560,7 +566,23 @@ function bindLayoutReset() {
 function bindStatsControls() {
   document.getElementById("refreshStatsBtn").addEventListener("click", refreshStats);
   document.getElementById("statsScopeFilter").addEventListener("change", renderStatsTable);
-  document.getElementById("statsTypeFilter").addEventListener("change", renderStatsTable);
+
+  document.getElementById("statsHittersBtn").addEventListener("click", () => {
+    statsTypeView = "hitters";
+    updateStatsToggleUI();
+    renderStatsTable();
+  });
+
+  document.getElementById("statsPitchersBtn").addEventListener("click", () => {
+    statsTypeView = "pitchers";
+    updateStatsToggleUI();
+    renderStatsTable();
+  });
+}
+
+function updateStatsToggleUI() {
+  document.getElementById("statsHittersBtn").classList.toggle("active", statsTypeView === "hitters");
+  document.getElementById("statsPitchersBtn").classList.toggle("active", statsTypeView === "pitchers");
 }
 
 function renderAll() {
@@ -1053,10 +1075,6 @@ function getTransactionsForDisplay() {
   });
 }
 
-function getSortedTransactions() {
-  return getTransactionsChronological();
-}
-
 function renderTransactions() {
   const list = document.getElementById("transactionList");
   const txs = getTransactionsForDisplay();
@@ -1157,6 +1175,62 @@ async function ensureRealAtlIds() {
   return realAtlIds;
 }
 
+async function ensureMlbTeamStats(type) {
+  if (mlbTeamStatsCache[type]) return mlbTeamStatsCache[type];
+
+  const group = type === "pitchers" ? "pitching" : "hitting";
+  const data = await fetchJson(`${MLB_API_BASE}/teams/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&sportIds=1`);
+
+  const splits = data?.stats?.[0]?.splits || [];
+  const rows = splits.map((split) => {
+    const stat = split.stat || {};
+    const team = split.team || {};
+    return type === "pitchers"
+      ? {
+          teamId: team.id,
+          teamName: team.abbreviation || team.name || "",
+          G: numOrZero(stat.gamesPlayed),
+          GS: numOrZero(stat.gamesStarted),
+          IP: stat.inningsPitched || "0.0",
+          ERA: toNumberOrNull(stat.era),
+          WHIP: toNumberOrNull(stat.whip),
+          H: numOrZero(stat.hits),
+          ER: numOrZero(stat.earnedRuns),
+          HR: numOrZero(stat.homeRuns),
+          BB: numOrZero(stat.baseOnBalls),
+          SO: numOrZero(stat.strikeOuts),
+          SV: numOrZero(stat.saves),
+          K9: toNumberOrNull(stat.strikeoutsPer9Inn),
+          BB9: toNumberOrNull(stat.walksPer9Inn),
+          HR9: toNumberOrNull(stat.homeRunsPer9)
+        }
+      : {
+          teamId: team.id,
+          teamName: team.abbreviation || team.name || "",
+          G: numOrZero(stat.gamesPlayed),
+          PA: numOrZero(stat.plateAppearances),
+          AB: numOrZero(stat.atBats),
+          R: numOrZero(stat.runs),
+          H: numOrZero(stat.hits),
+          "2B": numOrZero(stat.doubles),
+          "3B": numOrZero(stat.triples),
+          HR: numOrZero(stat.homeRuns),
+          RBI: numOrZero(stat.rbi),
+          BB: numOrZero(stat.baseOnBalls),
+          SO: numOrZero(stat.strikeOuts),
+          SB: numOrZero(stat.stolenBases),
+          CS: numOrZero(stat.caughtStealing),
+          AVG: toNumberOrNull(stat.avg),
+          OBP: toNumberOrNull(stat.obp),
+          SLG: toNumberOrNull(stat.slg),
+          OPS: toNumberOrNull(stat.ops)
+        };
+  });
+
+  mlbTeamStatsCache[type] = rows;
+  return rows;
+}
+
 function choosePlayerRecordByType(records, preferredType) {
   if (!records?.length) return null;
   let candidates = [...records];
@@ -1197,6 +1271,12 @@ function extractStatSplit(data) {
 function numOrZero(value) {
   const num = Number(value);
   return Number.isNaN(num) ? 0 : num;
+}
+
+function toNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isNaN(num) ? null : num;
 }
 
 async function fetchPlayerSeasonStats(player) {
@@ -1296,6 +1376,8 @@ async function refreshStats() {
     ensurePlayerHistory();
     await ensureStatsDirectory();
     await ensureRealAtlIds();
+    await ensureMlbTeamStats("hitters");
+    await ensureMlbTeamStats("pitchers");
     await resolveHistoryIds();
 
     const history = [...state.playerHistory].filter((p) => normalize(p.name));
@@ -1316,7 +1398,6 @@ async function refreshStats() {
 
 function getFilteredStatsRows() {
   const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
-  const typeFilter = document.getElementById("statsTypeFilter")?.value || "all";
   const ourTeamNames = currentRosterNamesSet();
 
   let rows = [...statsView];
@@ -1327,9 +1408,7 @@ function getFilteredStatsRows() {
     rows = rows.filter((row) => row.isRealAtl);
   }
 
-  if (typeFilter === "hitters") rows = rows.filter((row) => row.type === "hitter");
-  if (typeFilter === "pitchers") rows = rows.filter((row) => row.type === "pitcher");
-
+  rows = rows.filter((row) => row.type === (statsTypeView === "hitters" ? "hitter" : "pitcher"));
   rows.sort((a, b) => compareStatsRows(a, b, statsSort.key, statsSort.direction));
   return rows;
 }
@@ -1347,34 +1426,165 @@ function compareStatsRows(a, b, key, direction) {
   return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
 }
 
+function ipStringToDecimal(ipString) {
+  const s = String(ipString || "0.0");
+  const parts = s.split(".");
+  const whole = Number(parts[0] || 0);
+  const frac = Number(parts[1] || 0);
+  if (frac === 1) return whole + 1 / 3;
+  if (frac === 2) return whole + 2 / 3;
+  return whole;
+}
+
+function decimalToIpString(ip) {
+  const whole = Math.floor(ip);
+  const frac = ip - whole;
+  if (frac < 0.17) return `${whole}.0`;
+  if (frac < 0.5) return `${whole}.1`;
+  return `${whole}.2`;
+}
+
+function buildTeamTotals(rows) {
+  if (!rows.length) return null;
+
+  if (statsTypeView === "hitters") {
+    const totals = {
+      name: "TEAM",
+      type: "hitter",
+      team: "",
+      G: 0, PA: 0, AB: 0, R: 0, H: 0,
+      "2B": 0, "3B": 0, HR: 0, RBI: 0,
+      BB: 0, SO: 0, SB: 0, CS: 0
+    };
+
+    rows.forEach((r) => {
+      totals.G += Number(r.G || 0);
+      totals.PA += Number(r.PA || 0);
+      totals.AB += Number(r.AB || 0);
+      totals.R += Number(r.R || 0);
+      totals.H += Number(r.H || 0);
+      totals["2B"] += Number(r["2B"] || 0);
+      totals["3B"] += Number(r["3B"] || 0);
+      totals.HR += Number(r.HR || 0);
+      totals.RBI += Number(r.RBI || 0);
+      totals.BB += Number(r.BB || 0);
+      totals.SO += Number(r.SO || 0);
+      totals.SB += Number(r.SB || 0);
+      totals.CS += Number(r.CS || 0);
+    });
+
+    const singles = totals.H - totals["2B"] - totals["3B"] - totals.HR;
+    const totalBases = singles + totals["2B"] * 2 + totals["3B"] * 3 + totals.HR * 4;
+
+    totals.AVG = totals.AB ? (totals.H / totals.AB).toFixed(3) : "";
+    totals.OBP = (totals.AB + totals.BB) ? ((totals.H + totals.BB) / (totals.AB + totals.BB)).toFixed(3) : "";
+    totals.SLG = totals.AB ? (totalBases / totals.AB).toFixed(3) : "";
+    totals.OPS = (totals.OBP && totals.SLG) ? (Number(totals.OBP) + Number(totals.SLG)).toFixed(3) : "";
+
+    return totals;
+  }
+
+  const totals = {
+    name: "TEAM",
+    type: "pitcher",
+    team: "",
+    G: 0, GS: 0, H: 0, ER: 0, HR: 0, BB: 0, SO: 0, SV: 0
+  };
+
+  let ipTotal = 0;
+
+  rows.forEach((r) => {
+    totals.G += Number(r.G || 0);
+    totals.GS += Number(r.GS || 0);
+    totals.H += Number(r.H || 0);
+    totals.ER += Number(r.ER || 0);
+    totals.HR += Number(r.HR || 0);
+    totals.BB += Number(r.BB || 0);
+    totals.SO += Number(r.SO || 0);
+    totals.SV += Number(r.SV || 0);
+    ipTotal += ipStringToDecimal(r.IP || "0.0");
+  });
+
+  totals.IP = decimalToIpString(ipTotal);
+  totals.ERA = ipTotal ? ((totals.ER * 9) / ipTotal).toFixed(2) : "";
+  totals.WHIP = ipTotal ? ((totals.H + totals.BB) / ipTotal).toFixed(2) : "";
+  totals.K9 = ipTotal ? ((totals.SO * 9) / ipTotal).toFixed(1) : "";
+  totals.BB9 = ipTotal ? ((totals.BB * 9) / ipTotal).toFixed(1) : "";
+  totals.HR9 = ipTotal ? ((totals.HR * 9) / ipTotal).toFixed(1) : "";
+
+  return totals;
+}
+
+function rankMetric(rows, key, value, lowerIsBetter = false) {
+  const values = rows
+    .map((r) => Number(r[key]))
+    .filter((v) => !Number.isNaN(v));
+
+  if (!values.length || value === "" || value === null || value === undefined) return null;
+
+  values.sort((a, b) => lowerIsBetter ? a - b : b - a);
+
+  const target = Number(value);
+  const index = values.findIndex((v) => v === target);
+  return index === -1 ? null : index + 1;
+}
+
+function buildRankCards(teamTotals) {
+  const container = document.getElementById("statsRankCards");
+  if (!container) return;
+
+  const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
+
+  if (!teamTotals || scope === "all_players") {
+    container.innerHTML = "";
+    return;
+  }
+
+  const leagueRows = mlbTeamStatsCache[statsTypeView] || [];
+  let comparisonRow = teamTotals;
+
+  if (scope === "real_atl") {
+    const realBraves = leagueRows.find((r) => r.teamId === BRAVES_TEAM_ID);
+    if (realBraves) comparisonRow = realBraves;
+  }
+
+  const configs = statsTypeView === "hitters"
+    ? [
+        { label: "HR Rank", key: "HR", lower: false, display: comparisonRow.HR },
+        { label: "OPS Rank", key: "OPS", lower: false, display: comparisonRow.OPS },
+        { label: "AVG Rank", key: "AVG", lower: false, display: comparisonRow.AVG },
+        { label: "RBI Rank", key: "RBI", lower: false, display: comparisonRow.RBI }
+      ]
+    : [
+        { label: "ERA Rank", key: "ERA", lower: true, display: comparisonRow.ERA },
+        { label: "WHIP Rank", key: "WHIP", lower: true, display: comparisonRow.WHIP },
+        { label: "SO Rank", key: "SO", lower: false, display: comparisonRow.SO },
+        { label: "SV Rank", key: "SV", lower: false, display: comparisonRow.SV }
+      ];
+
+  container.innerHTML = configs.map((cfg) => {
+    const rank = rankMetric(leagueRows, cfg.key, comparisonRow[cfg.key], cfg.lower);
+    const sourceLabel = scope === "real_atl" ? "Real ATL vs MLB" : "Our Team vs MLB";
+    return `
+      <div class="rank-card">
+        <div class="rank-card-label">${escapeHtml(cfg.label)}</div>
+        <div class="rank-card-value">${rank ? `#${rank}` : "—"}</div>
+        <div class="rank-card-sub">${escapeHtml(sourceLabel)} • ${escapeHtml(String(cfg.display ?? "—"))}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderStatsTable() {
   const thead = document.getElementById("statsThead");
   const tbody = document.getElementById("statsTbody");
   if (!thead || !tbody) return;
 
   const rows = getFilteredStatsRows();
-  const typeFilter = document.getElementById("statsTypeFilter")?.value || "all";
+  const teamRow = buildTeamTotals(rows);
+  buildRankCards(teamRow);
 
-  let columns;
-  if (typeFilter === "hitters") {
-    columns = HITTER_COLUMNS;
-  } else if (typeFilter === "pitchers") {
-    columns = PITCHER_COLUMNS;
-  } else {
-    columns = [
-      { key: "name", label: "Player" },
-      { key: "type", label: "Type" },
-      { key: "team", label: "Team" },
-      { key: "G", label: "G" },
-      { key: "HR", label: "HR" },
-      { key: "RBI", label: "RBI" },
-      { key: "AVG", label: "AVG" },
-      { key: "ERA", label: "ERA" },
-      { key: "WHIP", label: "WHIP" },
-      { key: "SO", label: "SO" },
-      { key: "SV", label: "SV" }
-    ];
-  }
+  const columns = statsTypeView === "hitters" ? HITTER_COLUMNS : PITCHER_COLUMNS;
 
   thead.innerHTML = `
     <tr>
@@ -1386,9 +1596,11 @@ function renderStatsTable() {
     </tr>
   `;
 
-  tbody.innerHTML = rows.length
-    ? rows.map((row) => `
-        <tr>
+  const displayRows = teamRow ? [teamRow, ...rows] : rows;
+
+  tbody.innerHTML = displayRows.length
+    ? displayRows.map((row, i) => `
+        <tr class="${i === 0 && teamRow ? "team-row" : ""}">
           ${columns.map((col) => renderStatsCell(row, col.key)).join("")}
         </tr>
       `).join("")
@@ -1410,7 +1622,9 @@ function renderStatsTable() {
 
 function renderStatsCell(row, key) {
   if (key === "type") {
-    return `<td><span class="stats-type-pill ${row.type}">${escapeHtml(row.type)}</span></td>`;
+    const cls = row.type === "pitcher" ? "pitcher" : "hitter";
+    const label = row.name === "TEAM" ? "team" : row.type;
+    return `<td><span class="stats-type-pill ${cls}">${escapeHtml(label)}</span></td>`;
   }
   return `<td>${escapeHtml(row[key] ?? "")}</td>`;
 }
