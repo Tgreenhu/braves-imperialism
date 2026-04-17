@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v15";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v16";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -567,7 +567,10 @@ function bindLayoutReset() {
 }
 
 function bindStatsControls() {
-  document.getElementById("refreshStatsBtn").addEventListener("click", refreshStats);
+  document.getElementById("refreshStatsBtn").addEventListener("click", async () => {
+    await refreshStats();
+    renderDepthChart();
+  });
   document.getElementById("statsScopeFilter").addEventListener("change", renderStatsTable);
 
   document.getElementById("statsHittersBtn").addEventListener("click", () => {
@@ -650,6 +653,23 @@ function buildDepthMap() {
   return map;
 }
 
+function getPlayerStatForDepthChart(player) {
+  const normalizedName = normalize(player.name);
+  if (!normalizedName || !statsView.length) return "";
+
+  const row = statsView.find((r) => normalize(r.name) === normalizedName);
+  if (!row) return "";
+
+  const isPitcher = PITCHER_PRIMARY_POSITIONS.has(String(player.primaryPos || "").toUpperCase());
+  if (isPitcher) {
+    const era = row.ERA;
+    return era ? `ERA ${era}` : "";
+  }
+
+  const ops = row.OPS;
+  return ops ? `OPS ${ops}` : "";
+}
+
 function renderDepthChart() {
   const map = buildDepthMap();
 
@@ -665,14 +685,20 @@ function renderDepthChart() {
   document.getElementById("rotationList").innerHTML = state.roster.rotation.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+      <div class="row-name-line">
+        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+        <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+      </div>
     </div>
   `).join("");
 
   document.getElementById("bullpenList").innerHTML = state.roster.bullpen.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+      <div class="row-name-line">
+        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+        <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+      </div>
     </div>
   `).join("");
 
@@ -688,7 +714,10 @@ function renderPositionBox(pos, players, maxVisible) {
     ${visible.map((player) => `
       <div class="depth-row">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
-        <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+        <div class="row-name-line">
+          <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
+          <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(player))}</div>
+        </div>
       </div>
     `).join("")}
     ${extra > 0 ? `<div class="pos-more">+${extra} more</div>` : ""}
@@ -1417,6 +1446,7 @@ async function refreshStats() {
     statsLoadedOnce = true;
     setStatsStatus(`Loaded ${rows.length} players`);
     renderStatsTable();
+    renderDepthChart();
   } catch (err) {
     console.error("refreshStats failed:", err);
     setStatsStatus(`Failed: ${err.message || "stats error"}`);
