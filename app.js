@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v14";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v15";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -158,6 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindLayoutReset();
   bindAuthControls();
   bindStatsControls();
+  bindExportButtons();
 
   renderAll();
   initDepthBoxDragging();
@@ -580,6 +581,12 @@ function bindStatsControls() {
     updateStatsToggleUI();
     renderStatsTable();
   });
+}
+
+function bindExportButtons() {
+  document.getElementById("downloadComparisonBtn").addEventListener("click", downloadComparisonExport);
+  document.getElementById("downloadStatsTableBtn").addEventListener("click", downloadStatsTableExport);
+  document.getElementById("downloadTransactionsBtn").addEventListener("click", downloadTransactionsExport);
 }
 
 function updateStatsToggleUI() {
@@ -1825,4 +1832,158 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+/* EXPORTS */
+
+function exportSheetBase(title, subtitle, tagText) {
+  const sheet = document.createElement("div");
+  sheet.className = "export-sheet";
+  sheet.innerHTML = `
+    <div class="export-header">
+      <div class="export-header-left">
+        <img src="./logo.png" alt="Braves Today logo" class="export-logo" />
+        <div>
+          <div class="export-title">${escapeHtml(title)}</div>
+          <div class="export-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+      </div>
+      <div class="export-tag">${escapeHtml(tagText)}</div>
+    </div>
+  `;
+  document.body.appendChild(sheet);
+  return sheet;
+}
+
+async function renderNodeToDownload(node, filename) {
+  const canvas = await html2canvas(node, {
+    backgroundColor: null,
+    scale: 2,
+    useCORS: true
+  });
+
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function currentStatsModeLabel() {
+  return statsTypeView === "hitters" ? "Hitters" : "Pitchers";
+}
+
+function currentStatsScopeLabel() {
+  const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
+  if (scope === "our_team") return "Our Team";
+  if (scope === "real_atl") return "Real ATL";
+  return "All Players";
+}
+
+async function downloadComparisonExport() {
+  const comparisonHtml = document.getElementById("statsComparisonTable")?.innerHTML;
+  if (!comparisonHtml) {
+    alert("No comparison table to export.");
+    return;
+  }
+
+  const sheet = exportSheetBase(
+    "Stats Comparison",
+    `${currentStatsModeLabel()} • Side by side comparison`,
+    currentStatsScopeLabel()
+  );
+
+  const block = document.createElement("div");
+  block.className = "export-block";
+  block.innerHTML = comparisonHtml;
+  sheet.appendChild(block);
+
+  await renderNodeToDownload(sheet, `braves-imperialism-${statsTypeView}-comparison.png`);
+  document.body.removeChild(sheet);
+}
+
+async function downloadStatsTableExport() {
+  const columns = statsTypeView === "hitters" ? HITTER_COLUMNS : PITCHER_COLUMNS;
+  const rows = getFilteredStatsRows();
+  const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
+  const typeLabel = getCurrentTypeLabel();
+
+  let teamRow = null;
+  if (scope === "our_team") {
+    teamRow = buildTeamTotals(getOurTeamRowsByType(typeLabel), typeLabel);
+  } else if (scope === "real_atl") {
+    teamRow = getRealAtlLeagueRow(typeLabel) || buildTeamTotals(getRealAtlRowsByType(typeLabel), typeLabel);
+  } else {
+    teamRow = buildTeamTotals(rows, typeLabel);
+  }
+
+  const displayRows = teamRow ? [teamRow, ...rows] : rows;
+
+  const tableHtml = `
+    <table>
+      <thead>
+        <tr>
+          ${columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${displayRows.map((row) => `
+          <tr>
+            ${columns.map((col) => {
+              if (col.key === "type") {
+                const label = row.name === "TEAM" ? "team" : row.type;
+                return `<td>${escapeHtml(label)}</td>`;
+              }
+              return `<td>${escapeHtml(row[col.key] ?? "")}</td>`;
+            }).join("")}
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+  const sheet = exportSheetBase(
+    "Stats Table",
+    `${currentStatsModeLabel()} • Current filter export`,
+    currentStatsScopeLabel()
+  );
+
+  const block = document.createElement("div");
+  block.className = "export-block";
+  block.innerHTML = tableHtml;
+  sheet.appendChild(block);
+
+  await renderNodeToDownload(sheet, `braves-imperialism-${statsTypeView}-${scope}-table.png`);
+  document.body.removeChild(sheet);
+}
+
+async function downloadTransactionsExport() {
+  const txs = getTransactionsForDisplay();
+
+  if (!txs.length) {
+    alert("No transactions to export.");
+    return;
+  }
+
+  const sheet = exportSheetBase(
+    "Transactions Log",
+    "Simplified series-by-series export",
+    `${txs.length} Entries`
+  );
+
+  const list = document.createElement("div");
+  list.className = "export-line-list";
+  list.innerHTML = txs.map((t) => `
+    <div class="export-line-item">
+      <strong>${escapeHtml(t.date || "—")}</strong> •
+      <strong>${escapeHtml(t.opponent || "—")}</strong> •
+      <strong>${escapeHtml(t.result || "—")}</strong> •
+      Added: ${escapeHtml(t.acquiredPlayer || "—")} •
+      Removed: ${escapeHtml(t.removedPlayer || "—")} •
+      Notes: ${escapeHtml(t.notes || "—")}
+    </div>
+  `).join("");
+  sheet.appendChild(list);
+
+  await renderNodeToDownload(sheet, "braves-imperialism-transactions.png");
+  document.body.removeChild(sheet);
 }
