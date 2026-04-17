@@ -513,6 +513,12 @@ input, select, textarea { color: var(--text); }
   text-overflow: ellipsis;
 }
 
+.protected-star {
+  color: var(--gold);
+  font-weight: 900;
+  margin-left: 3px;
+}
+
 .pos-more {
   margin-top: 4px;
   font-size: 10px;
@@ -523,15 +529,21 @@ input, select, textarea { color: var(--text); }
 .chart-footer {
   position: absolute;
   left: 2.2%;
+  right: 2.2%;
   bottom: 1.6%;
   z-index: 4;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
   color: rgba(255,255,255,0.92);
   font-size: clamp(8px, 0.9vw, 12px);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.chart-key {
+  color: rgba(255,255,255,0.84);
 }
 
 .editor-grid {
@@ -582,7 +594,7 @@ input, select, textarea { color: var(--text); }
 
 .player-row {
   display: grid;
-  grid-template-columns: 24px minmax(140px, 1.6fr) minmax(120px, 0.8fr) minmax(150px, 1.3fr) auto;
+  grid-template-columns: 24px minmax(140px, 1.5fr) minmax(120px, 0.8fr) minmax(150px, 1.2fr) minmax(130px, 0.7fr) auto;
   gap: 10px;
   align-items: start;
   background: linear-gradient(180deg, rgba(19,33,58,0.85) 0%, rgba(14,24,42,0.92) 100%);
@@ -639,6 +651,32 @@ input, select, textarea { color: var(--text); }
 }
 
 .secondary-pill input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.protected-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.protected-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0c1628;
+  border: 1px solid #2a3f61;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.protected-pill input {
   width: auto;
   margin: 0;
   padding: 0;
@@ -915,11 +953,17 @@ input, select, textarea { color: var(--text); }
   .stats-rank-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 880px) {
-  .player-row { grid-template-columns: 24px 1fr; }
+@media (max-width: 980px) {
+  .player-row {
+    grid-template-columns: 24px 1fr;
+  }
+
   .player-row > .field-wrap,
   .player-row > .secondary-wrap,
-  .player-row > .delete-wrap { grid-column: 2; }
+  .player-row > .protected-wrap,
+  .player-row > .delete-wrap {
+    grid-column: 2;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1025,7 +1069,10 @@ input, select, textarea { color: var(--text); }
 
   .chart-footer {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     justify-content: flex-start;
+    gap: 4px;
     padding: 8px 14px 0;
     font-size: 10px;
   }
