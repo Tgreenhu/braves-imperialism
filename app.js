@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v13";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v14";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -1556,63 +1556,49 @@ function getRealAtlLeagueRow(typeLabel) {
   return rows.find((r) => r.teamId === BRAVES_TEAM_ID) || null;
 }
 
-function rankMetric(rows, key, value, lowerIsBetter = false) {
-  const values = rows
-    .map((r) => Number(r[key]))
-    .filter((v) => !Number.isNaN(v));
+function getLeagueAverageRow(typeLabel) {
+  const cacheKey = typeLabel === "hitter" ? "hitters" : "pitchers";
+  const rows = mlbTeamStatsCache[cacheKey] || [];
+  if (!rows.length) return null;
 
-  if (!values.length || value === "" || value === null || value === undefined) return null;
+  const keys = typeLabel === "hitter"
+    ? ["AVG", "OBP", "SLG", "OPS", "HR", "R", "RBI"]
+    : ["ERA", "WHIP", "SV", "K9", "BB9", "HR9"];
 
-  values.sort((a, b) => lowerIsBetter ? a - b : b - a);
+  const avgRow = { name: "MLB AVG", type: typeLabel, team: "" };
 
-  const target = Number(value);
-  const index = values.findIndex((v) => v === target);
-  return index === -1 ? null : index + 1;
+  keys.forEach((key) => {
+    const nums = rows.map((r) => Number(r[key])).filter((v) => !Number.isNaN(v));
+    if (!nums.length) {
+      avgRow[key] = "";
+      return;
+    }
+    const avg = nums.reduce((sum, v) => sum + v, 0) / nums.length;
+    avgRow[key] = ["HR", "R", "RBI", "SV"].includes(key)
+      ? avg.toFixed(1)
+      : avg.toFixed(3);
+    if (["ERA", "WHIP"].includes(key)) avgRow[key] = avg.toFixed(2);
+    if (["K9", "BB9", "HR9"].includes(key)) avgRow[key] = avg.toFixed(1);
+  });
+
+  return avgRow;
 }
 
-function buildRankCards(ourTotals, realTotals) {
-  const container = document.getElementById("statsRankCards");
-  if (!container) return;
+function getPercentile(leagueRows, key, value, lowerIsBetter = false) {
+  const values = leagueRows.map((r) => Number(r[key])).filter((v) => !Number.isNaN(v));
+  const target = Number(value);
+  if (!values.length || Number.isNaN(target)) return null;
 
-  const cacheKey = statsTypeView === "hitters" ? "hitters" : "pitchers";
-  const leagueRows = mlbTeamStatsCache[cacheKey] || [];
-
-  if (!ourTotals && !realTotals) {
-    container.innerHTML = "";
-    return;
+  let belowOrEqual = 0;
+  for (const val of values) {
+    if (lowerIsBetter) {
+      if (val >= target) belowOrEqual++;
+    } else {
+      if (val <= target) belowOrEqual++;
+    }
   }
 
-  const configs = statsTypeView === "hitters"
-    ? [
-        { label: "AVG", key: "AVG", lower: false },
-        { label: "OBP", key: "OBP", lower: false },
-        { label: "SLG", key: "SLG", lower: false },
-        { label: "OPS", key: "OPS", lower: false },
-        { label: "HR", key: "HR", lower: false },
-        { label: "R", key: "R", lower: false },
-        { label: "RBI", key: "RBI", lower: false }
-      ]
-    : [
-        { label: "ERA", key: "ERA", lower: true },
-        { label: "WHIP", key: "WHIP", lower: true },
-        { label: "SV", key: "SV", lower: false },
-        { label: "K/9", key: "K9", lower: false },
-        { label: "BB/9", key: "BB9", lower: true },
-        { label: "HR/9", key: "HR9", lower: true }
-      ];
-
-  container.innerHTML = configs.map((cfg) => {
-    const ourRank = ourTotals ? rankMetric(leagueRows, cfg.key, ourTotals[cfg.key], cfg.lower) : null;
-    const atlRank = realTotals ? rankMetric(leagueRows, cfg.key, realTotals[cfg.key], cfg.lower) : null;
-
-    return `
-      <div class="rank-card">
-        <div class="rank-card-label">${escapeHtml(cfg.label)}</div>
-        <div class="rank-card-value">Our: ${ourRank ? `#${ourRank}` : "—"}</div>
-        <div class="rank-card-sub">ATL: ${atlRank ? `#${atlRank}` : "—"}</div>
-      </div>
-    `;
-  }).join("");
+  return Math.round((belowOrEqual / values.length) * 100);
 }
 
 function metricValueForDisplay(obj, key) {
@@ -1633,35 +1619,60 @@ function isLowerBetterMetric(key) {
   return ["ERA", "WHIP", "BB9", "HR9"].includes(key);
 }
 
-function renderComparisonTable(ourHitters, realHitters, ourPitchers, realPitchers) {
+function renderMetricCell(obj, key, leagueRows, allowGreen = false, compareAgainst = null, showPercentile = false) {
+  const displayValue = metricValueForDisplay(obj, key);
+  const thisVal = numericMetricValue(obj, key);
+  const otherVal = numericMetricValue(compareAgainst, key);
+
+  let betterClass = "";
+  if (allowGreen && thisVal !== null && otherVal !== null) {
+    const better = isLowerBetterMetric(key) ? thisVal < otherVal : thisVal > otherVal;
+    if (better) betterClass = "better";
+  }
+
+  let percentileHtml = "";
+  if (showPercentile && thisVal !== null) {
+    const pct = getPercentile(leagueRows, key, thisVal, isLowerBetterMetric(key));
+    if (pct !== null) {
+      percentileHtml = `
+        <div class="percentile-wrap">
+          <div class="percentile-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="percentile-label">${pct}th pct</div>
+      `;
+    }
+  }
+
+  return `
+    <td class="metric-cell ${betterClass}">
+      <span class="metric-value">${escapeHtml(String(displayValue))}</span>
+      ${percentileHtml}
+    </td>
+  `;
+}
+
+function renderComparisonTable(ourHitters, realHitters, leagueAvgHitters, ourPitchers, realPitchers, leagueAvgPitchers) {
   const container = document.getElementById("statsComparisonTable");
   if (!container) return;
 
   const metrics = [
-    { key: "AVG", source: "hitter" },
-    { key: "OBP", source: "hitter" },
-    { key: "SLG", source: "hitter" },
-    { key: "OPS", source: "hitter" },
-    { key: "HR", source: "hitter" },
-    { key: "R", source: "hitter" },
-    { key: "RBI", source: "hitter" },
-    { key: "ERA", source: "pitcher" },
-    { key: "WHIP", source: "pitcher" },
-    { key: "SV", source: "pitcher" },
-    { key: "K9", source: "pitcher" },
-    { key: "BB9", source: "pitcher" },
-    { key: "HR9", source: "pitcher" }
+    { key: "AVG", label: "AVG", source: "hitter" },
+    { key: "OBP", label: "OBP", source: "hitter" },
+    { key: "SLG", label: "SLG", source: "hitter" },
+    { key: "OPS", label: "OPS", source: "hitter" },
+    { key: "HR", label: "HR", source: "hitter" },
+    { key: "R", label: "R", source: "hitter" },
+    { key: "RBI", label: "RBI", source: "hitter" },
+    { key: "ERA", label: "ERA", source: "pitcher" },
+    { key: "WHIP", label: "WHIP", source: "pitcher" },
+    { key: "SV", label: "SV", source: "pitcher" },
+    { key: "K9", label: "K/9", source: "pitcher" },
+    { key: "BB9", label: "BB/9", source: "pitcher" },
+    { key: "HR9", label: "HR/9", source: "pitcher" }
   ];
 
-  const ourObj = {
-    hitter: ourHitters,
-    pitcher: ourPitchers
-  };
-
-  const atlObj = {
-    hitter: realHitters,
-    pitcher: realPitchers
-  };
+  const hitterLeagueRows = mlbTeamStatsCache.hitters || [];
+  const pitcherLeagueRows = mlbTeamStatsCache.pitchers || [];
 
   container.innerHTML = `
     <div class="stats-table-wrap">
@@ -1669,30 +1680,33 @@ function renderComparisonTable(ourHitters, realHitters, ourPitchers, realPitcher
         <thead>
           <tr>
             <th>Team</th>
-            ${metrics.map((m) => `<th>${escapeHtml(m.key === "K9" ? "K/9" : m.key === "BB9" ? "BB/9" : m.key === "HR9" ? "HR/9" : m.key)}</th>`).join("")}
+            ${metrics.map((m) => `<th>${escapeHtml(m.label)}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><strong>Our Team</strong></td>
             ${metrics.map((m) => {
-              const ourVal = numericMetricValue(ourObj[m.source], m.key);
-              const atlVal = numericMetricValue(atlObj[m.source], m.key);
-              const better = ourVal !== null && atlVal !== null
-                ? (isLowerBetterMetric(m.key) ? ourVal < atlVal : ourVal > atlVal)
-                : false;
-              return `<td class="${better ? "better" : ""}">${escapeHtml(String(metricValueForDisplay(ourObj[m.source], m.key)))}</td>`;
+              const sourceObj = m.source === "hitter" ? ourHitters : ourPitchers;
+              const compareObj = m.source === "hitter" ? realHitters : realPitchers;
+              const leagueRows = m.source === "hitter" ? hitterLeagueRows : pitcherLeagueRows;
+              return renderMetricCell(sourceObj, m.key, leagueRows, true, compareObj, true);
             }).join("")}
           </tr>
           <tr>
             <td><strong>Real ATL</strong></td>
             ${metrics.map((m) => {
-              const ourVal = numericMetricValue(ourObj[m.source], m.key);
-              const atlVal = numericMetricValue(atlObj[m.source], m.key);
-              const better = ourVal !== null && atlVal !== null
-                ? (isLowerBetterMetric(m.key) ? atlVal < ourVal : atlVal > ourVal)
-                : false;
-              return `<td class="${better ? "better" : ""}">${escapeHtml(String(metricValueForDisplay(atlObj[m.source], m.key)))}</td>`;
+              const sourceObj = m.source === "hitter" ? realHitters : realPitchers;
+              const compareObj = m.source === "hitter" ? ourHitters : ourPitchers;
+              const leagueRows = m.source === "hitter" ? hitterLeagueRows : pitcherLeagueRows;
+              return renderMetricCell(sourceObj, m.key, leagueRows, true, compareObj, true);
+            }).join("")}
+          </tr>
+          <tr>
+            <td><strong>MLB Avg</strong></td>
+            ${metrics.map((m) => {
+              const sourceObj = m.source === "hitter" ? leagueAvgHitters : leagueAvgPitchers;
+              return renderMetricCell(sourceObj, m.key, m.source === "hitter" ? hitterLeagueRows : pitcherLeagueRows, false, null, false);
             }).join("")}
           </tr>
         </tbody>
@@ -1713,20 +1727,25 @@ function renderStatsTable() {
   const ourPitcherTotals = buildTeamTotals(getOurTeamRowsByType("pitcher"), "pitcher");
   const realHitterTotals = getRealAtlLeagueRow("hitter") || buildTeamTotals(getRealAtlRowsByType("hitter"), "hitter");
   const realPitcherTotals = getRealAtlLeagueRow("pitcher") || buildTeamTotals(getRealAtlRowsByType("pitcher"), "pitcher");
+  const leagueAvgHitters = getLeagueAverageRow("hitter");
+  const leagueAvgPitchers = getLeagueAverageRow("pitcher");
 
-  renderComparisonTable(ourHitterTotals, realHitterTotals, ourPitcherTotals, realPitcherTotals);
-
-  const ourCurrentTotals = typeLabel === "hitter" ? ourHitterTotals : ourPitcherTotals;
-  const realCurrentTotals = typeLabel === "hitter" ? realHitterTotals : realPitcherTotals;
-  buildRankCards(ourCurrentTotals, realCurrentTotals);
+  renderComparisonTable(
+    ourHitterTotals,
+    realHitterTotals,
+    leagueAvgHitters,
+    ourPitcherTotals,
+    realPitcherTotals,
+    leagueAvgPitchers
+  );
 
   const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
   let teamRow = null;
 
   if (scope === "our_team") {
-    teamRow = ourCurrentTotals;
+    teamRow = typeLabel === "hitter" ? ourHitterTotals : ourPitcherTotals;
   } else if (scope === "real_atl") {
-    teamRow = realCurrentTotals;
+    teamRow = typeLabel === "hitter" ? realHitterTotals : realPitcherTotals;
   } else if (scope === "all_players") {
     teamRow = buildTeamTotals(filteredRows, typeLabel);
   }
