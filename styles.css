@@ -978,6 +978,115 @@ input, select, textarea { color: var(--text); }
   color: #c084fc;
 }
 
+.export-sheet {
+  width: 1600px;
+  background: linear-gradient(180deg, #0d1728 0%, #08111f 100%);
+  color: var(--text);
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid #243754;
+  position: fixed;
+  left: -99999px;
+  top: 0;
+  box-shadow: var(--shadow);
+}
+
+.export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.export-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.export-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.export-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--white);
+}
+
+.export-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.export-tag {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.export-block {
+  border: 1px solid #243754;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.export-block table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.export-block thead {
+  background: #10203a;
+}
+
+.export-block th,
+.export-block td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #22324d;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.export-block th {
+  color: #dce8ff;
+  font-weight: 800;
+}
+
+.export-block td {
+  color: #cfe0fa;
+}
+
+.export-line-list {
+  display: grid;
+  gap: 8px;
+}
+
+.export-line-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #243754;
+  background: rgba(255,255,255,0.03);
+  font-size: 13px;
+  line-height: 1.4;
+  color: #dce8ff;
+}
+
+.export-line-item strong {
+  color: var(--white);
+}
+
 @media (max-width: 1100px) {
   .editor-grid { grid-template-columns: 1fr; }
   .app-hero { flex-direction: column; }
