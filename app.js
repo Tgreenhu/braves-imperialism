@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v10";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v11";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -186,12 +186,13 @@ function makeId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function makePlayer(name, primaryPos, secondaryPositions = []) {
+function makePlayer(name, primaryPos, secondaryPositions = [], isProtected = false) {
   return {
     id: makeId(),
     name,
     primaryPos,
-    secondaryPositions: [...secondaryPositions]
+    secondaryPositions: [...secondaryPositions],
+    isProtected
   };
 }
 
@@ -224,7 +225,8 @@ function normalizeRoster(roster) {
         id: p.id || makeId(),
         name: p.name || "",
         primaryPos: p.primaryPos || defaultPrimaryPos(group),
-        secondaryPositions: Array.isArray(p.secondaryPositions) ? p.secondaryPositions : []
+        secondaryPositions: Array.isArray(p.secondaryPositions) ? p.secondaryPositions : [],
+        isProtected: !!p.isProtected
       }));
     }
   }
@@ -656,14 +658,14 @@ function renderDepthChart() {
   document.getElementById("rotationList").innerHTML = state.roster.rotation.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
     </div>
   `).join("");
 
   document.getElementById("bullpenList").innerHTML = state.roster.bullpen.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+      <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
     </div>
   `).join("");
 
@@ -679,7 +681,7 @@ function renderPositionBox(pos, players, maxVisible) {
     ${visible.map((player) => `
       <div class="depth-row">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
-        <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}</div>
+        <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
       </div>
     `).join("")}
     ${extra > 0 ? `<div class="pos-more">+${extra} more</div>` : ""}
@@ -790,6 +792,13 @@ function renderPlayerRow(player, groupKey) {
         </div>
       </div>
 
+      <div class="protected-wrap">
+        <label class="protected-pill">
+          <input type="checkbox" data-field="isProtected" ${player.isProtected ? "checked" : ""} />
+          <span>Protected</span>
+        </label>
+      </div>
+
       <div class="delete-wrap">
         <button class="delete-row-btn" data-action="delete-player">Delete</button>
       </div>
@@ -801,7 +810,7 @@ function bindRosterEditorControls() {
   document.querySelectorAll(".add-row-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const group = btn.dataset.group;
-      const player = makePlayer("", defaultPrimaryPos(group));
+      const player = makePlayer("", defaultPrimaryPos(group), [], false);
       state.roster[group].push(player);
       rememberPlayer(player);
       renderAll();
@@ -842,6 +851,17 @@ function bindRosterEditorControls() {
       if (e.target.checked) next.add(pos);
       else next.delete(pos);
       player.secondaryPositions = [...next];
+      renderDepthChart();
+      queueCloudSave();
+    });
+  });
+
+  document.querySelectorAll(".player-row input[data-field='isProtected']").forEach((checkbox) => {
+    checkbox.addEventListener("change", (e) => {
+      const row = e.target.closest(".player-row");
+      const player = findRosterPlayer(row.dataset.group, row.dataset.id);
+      if (!player) return;
+      player.isProtected = e.target.checked;
       renderDepthChart();
       queueCloudSave();
     });
@@ -1008,7 +1028,7 @@ function applyTransactionToRoster(tx) {
     );
 
     if (!exists) {
-      const player = makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group));
+      const player = makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group), [], false);
       state.roster[group].push(player);
       rememberPlayer(player);
     }
@@ -1051,7 +1071,7 @@ function rebuildRosterWithoutTransaction(excludedId) {
       );
 
       if (!exists) {
-        roster[group].push(makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group)));
+        roster[group].push(makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group), [], false));
       }
     }
   }
