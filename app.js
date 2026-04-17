@@ -1,4 +1,4 @@
-const STORAGE_KEY = "braves-imperialism-tracker-supabase-v11";
+const STORAGE_KEY = "braves-imperialism-tracker-supabase-v12";
 const REDIRECT_URL = "https://tgreenhu.github.io/braves-imperialism/";
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 const CURRENT_SEASON = new Date().getFullYear();
@@ -1418,12 +1418,13 @@ async function refreshStats() {
 
 function getFilteredStatsRows() {
   const scope = document.getElementById("statsScopeFilter")?.value || "our_team";
-  const ourTeamNames = currentRosterNamesSet();
+  const currentRoster = Object.values(state.roster).flat();
+  const currentRosterMap = new Map(currentRoster.map((p) => [normalize(p.name), p]));
 
   let rows = [...statsView];
 
   if (scope === "our_team") {
-    rows = rows.filter((row) => ourTeamNames.has(normalize(row.name)));
+    rows = rows.filter((row) => currentRosterMap.has(normalize(row.name)));
   } else if (scope === "real_atl") {
     rows = rows.filter((row) => row.isRealAtl);
   }
@@ -1570,9 +1571,12 @@ function buildRankCards(teamTotals) {
 
   const configs = statsTypeView === "hitters"
     ? [
-        { label: "HR Rank", key: "HR", lower: false, display: comparisonRow.HR },
-        { label: "OPS Rank", key: "OPS", lower: false, display: comparisonRow.OPS },
         { label: "AVG Rank", key: "AVG", lower: false, display: comparisonRow.AVG },
+        { label: "OBP Rank", key: "OBP", lower: false, display: comparisonRow.OBP },
+        { label: "SLG Rank", key: "SLG", lower: false, display: comparisonRow.SLG },
+        { label: "OPS Rank", key: "OPS", lower: false, display: comparisonRow.OPS },
+        { label: "HR Rank", key: "HR", lower: false, display: comparisonRow.HR },
+        { label: "R Rank", key: "R", lower: false, display: comparisonRow.R },
         { label: "RBI Rank", key: "RBI", lower: false, display: comparisonRow.RBI }
       ]
     : [
