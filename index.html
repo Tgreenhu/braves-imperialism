@@ -1,270 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Braves Imperialism Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Braves Imperialism</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0b0f14;
+  color: white;
+}
+
+h1 {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.container {
+  padding: 20px;
+}
+
+/* FIELD */
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+}
+
+/* PLAYER BOX */
+.player-box {
+  background: rgba(20,20,20,0.9);
+  border-radius: 10px;
+  padding: 6px 8px;
+  max-width: 140px;
+  min-width: 90px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* TEXT FIXES */
+.player-name {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.stat {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.star {
+  color: gold;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* LEGEND */
+.legend {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .player-box {
+    max-width: 100px;
+    min-width: 70px;
+    padding: 4px;
+  }
+
+  .name {
+    font-size: 10px;
+  }
+
+  .stat {
+    font-size: 9px;
+  }
+}
+</style>
 </head>
+
 <body>
-  <div class="page-shell">
-    <header class="app-hero">
-      <div class="hero-left">
-        <img src="./logo.png" alt="Braves Today logo" class="hero-logo" />
-        <div>
-          <div class="eyebrow">Braves Today</div>
-          <h1>Braves Imperialism Tracker</h1>
-          <p>
-            Manage your 26-man imperialism roster, log transactions, drag the depth chart into a clean layout,
-            sync everything across devices with Supabase, and track season stats for every player ever on your tracker.
-          </p>
-        </div>
-      </div>
 
-      <div class="hero-right">
-        <div class="hero-badges">
-          <div class="hero-badge">GitHub Pages</div>
-          <div class="hero-badge" id="totalPlayersBadge">26 Players Loaded</div>
-        </div>
+<h1>Braves Imperialism Depth Chart</h1>
 
-        <div class="auth-card">
-          <div class="auth-row">
-            <input type="email" id="authEmail" placeholder="you@example.com" />
-            <button class="primary-button auth-btn" id="signInBtn">Email Login Link</button>
-          </div>
-          <div class="auth-row auth-row-bottom">
-            <div id="authStatus" class="auth-status">Not signed in</div>
-            <button class="secondary-button auth-btn hidden" id="signOutBtn">Sign Out</button>
-          </div>
-          <div id="syncStatus" class="auth-status">Sync: waiting</div>
-        </div>
-      </div>
-    </header>
+<div class="container">
+  <div id="field" class="field"></div>
 
-    <nav class="tabs tabs-4">
-      <button class="tab-button active" data-tab="depth">Depth Chart</button>
-      <button class="tab-button" data-tab="roster">Roster Editor</button>
-      <button class="tab-button" data-tab="transactions">Transactions</button>
-      <button class="tab-button" data-tab="stats">Stats</button>
-    </nav>
-
-    <main>
-      <section class="tab-panel active" id="tab-depth">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Shareable Depth Chart</h2>
-            <p>Drag the boxes wherever you want on desktop, then export a clean square graphic.</p>
-          </div>
-          <div class="toolbar-actions">
-            <button class="secondary-button" id="resetDepthLayoutBtn">Reset Layout</button>
-            <button class="primary-button" id="downloadChartBtn">Download PNG</button>
-          </div>
-        </div>
-
-        <div class="chart-wrap">
-          <div class="depth-chart-frame">
-            <div id="depthChartExport" class="depth-chart-export">
-              <div class="chart-topbar"></div>
-
-              <div class="chart-header">
-                <div class="chart-header-left">
-                  <img src="./logo.png" alt="Braves Today logo" class="chart-logo" />
-                  <div class="chart-title-block">
-                    <div class="chart-kicker">Braves Today Imperialism</div>
-                    <div class="chart-title">Depth Chart</div>
-                    <div class="chart-subtitle">Live 26-man conquest roster</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="field-sky"></div>
-              <div class="field-outfield-arc"></div>
-              <div class="field-grass"></div>
-              <div class="field-infield-dirt"></div>
-              <div class="field-inner-dirt"></div>
-              <div class="field-mound"></div>
-              <div class="field-homeplate"></div>
-              <div class="foul-line foul-line-left"></div>
-              <div class="foul-line foul-line-right"></div>
-              <div class="infield-line infield-line-left"></div>
-              <div class="infield-line infield-line-right"></div>
-              <div class="grass-stripe stripe-1"></div>
-              <div class="grass-stripe stripe-2"></div>
-              <div class="grass-stripe stripe-3"></div>
-              <div class="grass-stripe stripe-4"></div>
-              <div class="grass-stripe stripe-5"></div>
-
-              <div class="depth-box pos-box green" data-box="LF"><div id="box-LF"></div></div>
-              <div class="depth-box pos-box green" data-box="CF"><div id="box-CF"></div></div>
-              <div class="depth-box pos-box purple" data-box="RF"><div id="box-RF"></div></div>
-
-              <div class="depth-box pos-box purple" data-box="3B"><div id="box-3B"></div></div>
-              <div class="depth-box pos-box navy" data-box="SS"><div id="box-SS"></div></div>
-              <div class="depth-box pos-box green" data-box="2B"><div id="box-2B"></div></div>
-              <div class="depth-box pos-box navy" data-box="1B"><div id="box-1B"></div></div>
-
-              <div class="depth-box pos-box red" data-box="C"><div id="box-C"></div></div>
-
-              <div class="depth-box staff-box bullpen-box" data-box="BULLPEN">
-                <div class="staff-title bullpen-title">Bullpen</div>
-                <div id="bullpenList"></div>
-              </div>
-
-              <div class="depth-box staff-box rotation-box" data-box="ROTATION">
-                <div class="staff-title rotation-title">Rotation</div>
-                <div id="rotationList"></div>
-              </div>
-
-              <div class="chart-footer">
-                <div>Braves Imperialism Tracker</div>
-                <div class="chart-key">* Protected from being stolen</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="tab-panel" id="tab-roster">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Roster Editor</h2>
-            <p>Drag players to reorder them and move them between lineup, bench, rotation, and bullpen. Secondary positions place them at the bottom of those depth charts.</p>
-          </div>
-        </div>
-
-        <div class="editor-grid" id="rosterEditorGrid"></div>
-      </section>
-
-      <section class="tab-panel" id="tab-transactions">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Transactions</h2>
-            <p>Transactions display newest first, but still apply in true chronological order behind the scenes.</p>
-          </div>
-          <div class="toolbar-actions">
-            <button class="secondary-button" id="downloadTransactionsBtn">Download Transactions</button>
-          </div>
-        </div>
-
-        <div class="transaction-editor-card">
-          <div class="transaction-editor-header">
-            <h3 id="transactionFormTitle">Add Transaction</h3>
-            <button class="secondary-button hidden" id="cancelEditBtn">Cancel Edit</button>
-          </div>
-
-          <div class="transaction-form-grid">
-            <label>
-              <span>Date</span>
-              <input type="date" id="txDate" />
-            </label>
-
-            <label>
-              <span>Opponent</span>
-              <input type="text" id="txOpponent" placeholder="Phillies" />
-            </label>
-
-            <label>
-              <span>Result</span>
-              <select id="txResult">
-                <option value="">Select result</option>
-                <option value="Win">Win</option>
-                <option value="Loss">Loss</option>
-                <option value="Tie">Tie</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Acquired Player</span>
-              <input type="text" id="txAcquiredPlayer" placeholder="Bobby Witt Jr." />
-            </label>
-
-            <label>
-              <span>Acquired Primary Position</span>
-              <select id="txAcquiredSlot"></select>
-            </label>
-
-            <label>
-              <span>Acquired Group</span>
-              <select id="txAcquiredGroup">
-                <option value="lineup">Starting 8</option>
-                <option value="bench">Bench</option>
-                <option value="rotation">Rotation</option>
-                <option value="bullpen">Bullpen</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Removed Player</span>
-              <input type="text" id="txRemovedPlayer" placeholder="Kyle Farmer" />
-            </label>
-
-            <label class="notes-field">
-              <span>Notes</span>
-              <textarea id="txNotes" rows="4" placeholder="Installed Bobby Witt Jr. at shortstop."></textarea>
-            </label>
-          </div>
-
-          <div class="transaction-form-actions">
-            <button class="primary-button" id="saveTransactionBtn">Save Transaction</button>
-          </div>
-        </div>
-
-        <div id="transactionList" class="transaction-list"></div>
-      </section>
-
-      <section class="tab-panel" id="tab-stats">
-        <div class="panel-toolbar">
-          <div>
-            <h2>Stats</h2>
-            <p>Season-long MLB stats for every player ever listed on your tracker, plus team totals and team-vs-MLB ranks.</p>
-          </div>
-          <div class="toolbar-actions">
-            <button class="secondary-button" id="refreshStatsBtn">Refresh Stats</button>
-            <button class="secondary-button" id="downloadComparisonBtn">Download Comparison</button>
-            <button class="secondary-button" id="downloadStatsTableBtn">Download Stats Table</button>
-          </div>
-        </div>
-
-        <div class="stats-card">
-          <div class="stats-controls">
-            <div class="stats-toggle">
-              <button id="statsHittersBtn" class="secondary-button active">Hitters</button>
-              <button id="statsPitchersBtn" class="secondary-button">Pitchers</button>
-            </div>
-
-            <label class="stats-control">
-              <span>View</span>
-              <select id="statsScopeFilter">
-                <option value="our_team" selected>Our Team</option>
-                <option value="real_atl">Real ATL</option>
-                <option value="all_players">All Players</option>
-              </select>
-            </label>
-
-            <div class="stats-status-wrap">
-              <span class="stats-status-label">Status</span>
-              <div id="statsStatus" class="stats-status">Idle</div>
-            </div>
-          </div>
-
-          <div id="statsComparisonTable" class="stats-comparison-wrap"></div>
-
-          <div class="stats-table-wrap">
-            <table class="stats-table">
-              <thead id="statsThead"></thead>
-              <tbody id="statsTbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </main>
+  <div class="legend">
+    <span class="star">*</span> = Protected Player
   </div>
+</div>
 
-  <script src="./app.js"></script>
+<script>
+/* =========================
+   SAMPLE DATA (REPLACE LATER)
+========================= */
+const players = [
+  { name: "Ronald Acuña Jr.", ops: .945, protected: true },
+  { name: "Ozzie Albies", ops: .820 },
+  { name: "Matt Olson", ops: .900 },
+  { name: "Austin Riley", ops: .875 },
+  { name: "Michael Harris II", ops: .810 },
+  { name: "Sean Murphy", ops: .780 },
+  { name: "Orlando Arcia", ops: .700 },
+
+  { name: "Spencer Strider", era: 2.95 },
+  { name: "Max Fried", era: 3.20, protected: true },
+  { name: "AJ Smith-Shawver", era: 3.75 },
+  { name: "Bullpen Arm 1", era: 3.50 },
+  { name: "Bullpen Arm 2", era: 4.10 }
+];
+
+/* =========================
+   RENDER FUNCTION
+========================= */
+function render() {
+  const field = document.getElementById("field");
+  field.innerHTML = "";
+
+  players.forEach(p => {
+    const box = document.createElement("div");
+    box.className = "player-box";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "player-name";
+
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = p.name;
+
+    const stat = document.createElement("span");
+    stat.className = "stat";
+
+    if (p.era) {
+      stat.textContent = " " + p.era.toFixed(2);
+    } else if (p.ops) {
+      stat.textContent = " " + p.ops.toFixed(3);
+    }
+
+    wrapper.appendChild(name);
+    wrapper.appendChild(stat);
+
+    if (p.protected) {
+      const star = document.createElement("span");
+      star.className = "star";
+      star.textContent = "*";
+      wrapper.appendChild(star);
+    }
+
+    box.appendChild(wrapper);
+    field.appendChild(box);
+  });
+}
+
+render();
+</script>
+
 </body>
 </html>
