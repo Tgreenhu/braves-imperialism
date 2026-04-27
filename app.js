@@ -670,6 +670,7 @@ function getPlayerStatForDepthChart(player) {
   return ops ? `OPS ${ops}` : "";
 }
 
+// ── FIXED: name never truncates, star appears after stat in gold ──
 function renderDepthChart() {
   const map = buildDepthMap();
 
@@ -686,8 +687,11 @@ function renderDepthChart() {
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
       <div class="row-name-line">
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
-        <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+        <div class="row-stat-star">
+          <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+          ${p.isProtected ? '<span class="protected-star">★</span>' : ''}
+        </div>
       </div>
     </div>
   `).join("");
@@ -696,8 +700,11 @@ function renderDepthChart() {
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
       <div class="row-name-line">
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
-        <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}</div>
+        <div class="row-stat-star">
+          <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(p))}</div>
+          ${p.isProtected ? '<span class="protected-star">★</span>' : ''}
+        </div>
       </div>
     </div>
   `).join("");
@@ -715,8 +722,11 @@ function renderPositionBox(pos, players, maxVisible) {
       <div class="depth-row">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
         <div class="row-name-line">
-          <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">*</span>' : ''}</div>
-          <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(player))}</div>
+          <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}</div>
+          <div class="row-stat-star">
+            <div class="row-stat">${escapeHtml(getPlayerStatForDepthChart(player))}</div>
+            ${player.isProtected ? '<span class="protected-star">★</span>' : ''}
+          </div>
         </div>
       </div>
     `).join("")}
