@@ -1,150 +1,237 @@
-/* =========================
-   GLOBAL
-========================= */
+/* =============================================
+   BRAVES IMPERIALISM — styles.css
+   ============================================= */
+
+:root {
+  --navy:       #0d1b2a;
+  --navy-mid:   #132338;
+  --navy-card:  #182d45;
+  --red:        #ce1141;
+  --red-dim:    #9c0f32;
+  --gold:       #eab208;
+  --gold-dim:   #a87c05;
+  --white:      #f0f4f8;
+  --muted:      #7a9ab5;
+  --protected:  #eab208;
+  --font-head:  'Oswald', sans-serif;
+  --font-mono:  'IBM Plex Mono', monospace;
+}
+
+/* ---- RESET ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0b0f14;
-  color: #ffffff;
+  background: var(--navy);
+  color: var(--white);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+}
+
+/* ---- HEADER ---- */
+header {
+  background: linear-gradient(135deg, #0a0f18 0%, #1a0a10 100%);
+  border-bottom: 3px solid var(--red);
+  padding: 18px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tomahawk {
+  font-size: 2rem;
+  animation: swing 3s ease-in-out infinite;
+  transform-origin: top right;
+}
+
+@keyframes swing {
+  0%, 100% { transform: rotate(-10deg); }
+  50%       { transform: rotate(10deg); }
 }
 
 h1 {
-  text-align: center;
-  margin: 20px 0;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-family: var(--font-head);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--white);
+  text-transform: uppercase;
 }
 
+.subtitle {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.header-meta {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---- MAIN CONTAINER ---- */
 .container {
-  padding: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
 }
 
-/* =========================
-   DEPTH CHART FIELD
-========================= */
+/* ---- SECTION ---- */
+.roster-section {
+  margin-bottom: 40px;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 10px;
+}
+
+.section-label h2 {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.section-badge {
+  font-family: var(--font-head);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.hitters-badge  { background: var(--red);    color: #fff; }
+.pitchers-badge { background: var(--navy-card); color: var(--gold); border: 1px solid var(--gold-dim); }
+.bullpen-badge  { background: rgba(255,255,255,0.07); color: var(--muted); border: 1px solid rgba(255,255,255,0.12); }
+
+/* ---- FIELD (card grid) ---- */
 .field {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px;
-  padding: 20px;
+  gap: 10px;
 }
 
-/* =========================
-   PLAYER BOX
-========================= */
+/* ---- PLAYER CARD ---- */
 .player-box {
-  background: rgba(20, 20, 20, 0.9);
-  border-radius: 10px;
-  padding: 6px 8px;
-
-  max-width: 140px;
-  min-width: 90px;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--navy-card);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-width: 110px;
+  max-width: 150px;
+  flex: 0 0 auto;
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  cursor: default;
 }
 
 .player-box:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  border-color: rgba(255,255,255,0.2);
 }
 
-/* =========================
-   TEXT HANDLING (FIXES CUT OFF NAMES)
-========================= */
+.player-box.is-protected {
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 10px rgba(234,178,8,0.15);
+}
+
+.position-tag {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
 .player-name {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-
-  gap: 4px;
-  text-align: center;
-  line-height: 1.1;
-}
-
-.name {
-  font-size: 12px;
+  font-family: var(--font-head);
+  font-size: 0.85rem;
   font-weight: 600;
-
+  line-height: 1.2;
+  color: var(--white);
   word-break: break-word;
+  margin-bottom: 6px;
 }
 
-.stat {
-  font-size: 11px;
-  opacity: 0.8;
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-/* =========================
-   PROTECTED STAR
-========================= */
-.star {
-  color: gold;
-  font-weight: bold;
-  font-size: 12px;
+.stat-key {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-/* =========================
-   LEGEND
-========================= */
+.ops-color { color: #60adf5; }
+.era-color { color: #7dd9a8; }
+
+.stat-value {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--white);
+}
+
+.star-badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  color: var(--gold);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* ---- LEGEND ---- */
 .legend {
+  margin-top: 30px;
   text-align: center;
-  margin-top: 10px;
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
 }
 
-/* =========================
-   RESPONSIVE (MOBILE)
-========================= */
-@media (max-width: 768px) {
-  .container {
-    padding: 10px;
-  }
+.star { color: var(--gold); }
+.stat-label { font-weight: 600; }
 
-  .field {
-    gap: 10px;
-    padding: 10px;
-  }
+/* ---- MOBILE ---- */
+@media (max-width: 640px) {
+  h1 { font-size: 1.1rem; }
+  .tomahawk { font-size: 1.4rem; }
 
   .player-box {
-    max-width: 100px;
-    min-width: 70px;
-    padding: 4px;
+    min-width: 90px;
+    max-width: 120px;
+    padding: 8px 10px;
   }
 
-  .name {
-    font-size: 10px;
-  }
-
-  .stat {
-    font-size: 9px;
-  }
-
-  .star {
-    font-size: 10px;
-  }
-}
-
-/* =========================
-   EXTRA SMALL SCREENS
-========================= */
-@media (max-width: 480px) {
-  .player-box {
-    max-width: 85px;
-    min-width: 60px;
-  }
-
-  .name {
-    font-size: 9px;
-  }
-
-  .stat {
-    font-size: 8px;
-  }
+  .player-name { font-size: 0.75rem; }
 }
