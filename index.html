@@ -1,178 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Braves Imperialism</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0b0f14;
-  color: white;
-}
-
-h1 {
-  text-align: center;
-  margin: 20px 0;
-}
-
-.container {
-  padding: 20px;
-}
-
-/* FIELD */
-.field {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px;
-  padding: 20px;
-}
-
-/* PLAYER BOX */
-.player-box {
-  background: rgba(20,20,20,0.9);
-  border-radius: 10px;
-  padding: 6px 8px;
-  max-width: 140px;
-  min-width: 90px;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* TEXT FIXES */
-.player-name {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-  text-align: center;
-  line-height: 1.1;
-}
-
-.name {
-  font-size: 12px;
-  font-weight: 600;
-  word-break: break-word;
-}
-
-.stat {
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-.star {
-  color: gold;
-  font-weight: bold;
-  font-size: 12px;
-}
-
-/* LEGEND */
-.legend {
-  text-align: center;
-  margin-top: 10px;
-  font-size: 12px;
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-  .player-box {
-    max-width: 100px;
-    min-width: 70px;
-    padding: 4px;
-  }
-
-  .name {
-    font-size: 10px;
-  }
-
-  .stat {
-    font-size: 9px;
-  }
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Braves Imperialism</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
 
-<h1>Braves Imperialism Depth Chart</h1>
+  <header>
+    <div class="header-inner">
+      <div class="logo-block">
+        <div class="tomahawk">🪓</div>
+        <div>
+          <h1>BRAVES IMPERIALISM</h1>
+          <p class="subtitle">Depth Chart Tracker</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span id="last-updated">—</span>
+      </div>
+    </div>
+  </header>
 
-<div class="container">
-  <div id="field" class="field"></div>
+  <main class="container">
 
-  <div class="legend">
-    <span class="star">*</span> = Protected Player
-  </div>
-</div>
+    <!-- HITTERS -->
+    <section class="roster-section">
+      <div class="section-label">
+        <span class="section-badge hitters-badge">LINEUP</span>
+        <h2>Position Players</h2>
+      </div>
+      <div id="hitters-field" class="field"></div>
+    </section>
 
-<script>
-/* =========================
-   SAMPLE DATA (REPLACE LATER)
-========================= */
-const players = [
-  { name: "Ronald Acuña Jr.", ops: .945, protected: true },
-  { name: "Ozzie Albies", ops: .820 },
-  { name: "Matt Olson", ops: .900 },
-  { name: "Austin Riley", ops: .875 },
-  { name: "Michael Harris II", ops: .810 },
-  { name: "Sean Murphy", ops: .780 },
-  { name: "Orlando Arcia", ops: .700 },
+    <!-- ROTATION -->
+    <section class="roster-section">
+      <div class="section-label">
+        <span class="section-badge pitchers-badge">ROTATION</span>
+        <h2>Starting Pitchers</h2>
+      </div>
+      <div id="rotation-field" class="field"></div>
+    </section>
 
-  { name: "Spencer Strider", era: 2.95 },
-  { name: "Max Fried", era: 3.20, protected: true },
-  { name: "AJ Smith-Shawver", era: 3.75 },
-  { name: "Bullpen Arm 1", era: 3.50 },
-  { name: "Bullpen Arm 2", era: 4.10 }
-];
+    <!-- BULLPEN -->
+    <section class="roster-section">
+      <div class="section-label">
+        <span class="section-badge bullpen-badge">BULLPEN</span>
+        <h2>Relief Pitchers</h2>
+      </div>
+      <div id="bullpen-field" class="field"></div>
+    </section>
 
-/* =========================
-   RENDER FUNCTION
-========================= */
-function render() {
-  const field = document.getElementById("field");
-  field.innerHTML = "";
+    <div class="legend">
+      <span class="star">★</span> = Protected Player &nbsp;|&nbsp;
+      <span class="stat-label ops-color">OPS</span> = On-base + Slugging &nbsp;|&nbsp;
+      <span class="stat-label era-color">ERA</span> = Earned Run Average
+    </div>
 
-  players.forEach(p => {
-    const box = document.createElement("div");
-    box.className = "player-box";
+  </main>
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "player-name";
-
-    const name = document.createElement("span");
-    name.className = "name";
-    name.textContent = p.name;
-
-    const stat = document.createElement("span");
-    stat.className = "stat";
-
-    if (p.era) {
-      stat.textContent = " " + p.era.toFixed(2);
-    } else if (p.ops) {
-      stat.textContent = " " + p.ops.toFixed(3);
-    }
-
-    wrapper.appendChild(name);
-    wrapper.appendChild(stat);
-
-    if (p.protected) {
-      const star = document.createElement("span");
-      star.className = "star";
-      star.textContent = "*";
-      wrapper.appendChild(star);
-    }
-
-    box.appendChild(wrapper);
-    field.appendChild(box);
-  });
-}
-
-render();
-</script>
-
+  <script src="app.js"></script>
 </body>
 </html>
