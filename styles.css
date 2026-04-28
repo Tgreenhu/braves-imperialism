@@ -448,11 +448,13 @@ input, select, textarea { color: var(--text); }
   padding: 14px 12px 12px;
   touch-action: none;
   user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .depth-box.dragging { opacity: 0.86; }
-.pos-box { width: 240px; }
-.staff-box { width: 350px; }
+.pos-box { width: 280px; }
+.staff-box { width: 380px; }
 
 .staff-title {
   font-weight: 800;
@@ -477,6 +479,7 @@ input, select, textarea { color: var(--text); }
   font-size: 13px;
   line-height: 1.18;
   padding: 3px 0;
+  overflow: hidden;
 }
 
 .staff-row {
@@ -484,6 +487,7 @@ input, select, textarea { color: var(--text); }
   font-size: 13px;
   line-height: 1.18;
   padding: 3px 0;
+  overflow: hidden;
 }
 
 .row-pos {
@@ -491,11 +495,13 @@ input, select, textarea { color: var(--text); }
   color: #d9e7ff;
 }
 
-/* FIX 1: name stacks above stat row — never truncates */
+/* FIX 1: name stacks above stat row — centered, never truncates */
 .row-name-line {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* FIX 1: name wraps fully, no ellipsis */
@@ -509,13 +515,15 @@ input, select, textarea { color: var(--text); }
   line-height: 1.25;
 }
 
-/* stat pills row — sits below the player name, always one line */
+/* stat pills row — one line, centered, clipped to box */
 .stat-pill-row {
   display: flex;
   flex-wrap: nowrap;
   gap: 3px;
-  margin-top: 3px;
+  margin-top: 4px;
   overflow: hidden;
+  justify-content: center;
+  max-width: 100%;
 }
 
 .stat-pill {
@@ -527,7 +535,8 @@ input, select, textarea { color: var(--text); }
   border-radius: 5px;
   padding: 1px 4px;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .stat-pill-label {
