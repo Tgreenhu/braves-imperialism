@@ -668,19 +668,15 @@ function getStatsForDepthChart(player, role) {
 
   if (role === "hitter") {
     return [
-      s("PA",  "PA"),
       s("AVG", "AVG"),
       s("OBP", "OBP"),
       s("SLG", "SLG"),
       s("OPS", "OPS"),
-      s("HR",  "HR"),
-      s("RBI", "RBI"),
     ].filter(Boolean);
   }
 
   if (role === "starter") {
     return [
-      s("GS",   "GS"),
       s("ERA",  "ERA"),
       s("WHIP", "WHIP"),
       s("K/9",  "K9"),
@@ -690,12 +686,10 @@ function getStatsForDepthChart(player, role) {
 
   if (role === "bullpen") {
     return [
-      s("G",    "G"),
       s("ERA",  "ERA"),
       s("WHIP", "WHIP"),
       s("K/9",  "K9"),
       s("BB/9", "BB9"),
-      s("SV",   "SV"),
     ].filter(Boolean);
   }
 
