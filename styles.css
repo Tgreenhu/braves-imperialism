@@ -451,8 +451,8 @@ input, select, textarea { color: var(--text); }
 }
 
 .depth-box.dragging { opacity: 0.86; }
-.pos-box { width: 260px; }
-.staff-box { width: 370px; }
+.pos-box { width: 240px; }
+.staff-box { width: 350px; }
 
 .staff-title {
   font-weight: 800;
@@ -509,35 +509,37 @@ input, select, textarea { color: var(--text); }
   line-height: 1.25;
 }
 
-/* stat pills row — sits below the player name */
+/* stat pills row — sits below the player name, always one line */
 .stat-pill-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 3px;
   margin-top: 3px;
+  overflow: hidden;
 }
 
 .stat-pill {
   display: inline-flex;
   align-items: baseline;
-  gap: 3px;
+  gap: 2px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  padding: 2px 5px;
+  border-radius: 5px;
+  padding: 1px 4px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .stat-pill-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 
 .stat-pill-value {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   color: #f0f6ff;
 }
