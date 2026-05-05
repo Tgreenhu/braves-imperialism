@@ -1048,8 +1048,8 @@ function saveTransactionFromForm() {
     notes: document.getElementById("txNotes").value.trim()
   };
 
-  if (!tx.date || !tx.opponent || !tx.result) {
-    alert("Add a date, opponent, and result.");
+  if (!tx.date) {
+    alert("Add a date.");
     return;
   }
 
@@ -1090,7 +1090,12 @@ function applyTransactionToRoster(tx) {
     }
   }
 
-  if (String(tx.result).toLowerCase() === "win" && tx.acquiredPlayer) {
+  // Add player on a win, OR on any roster move with no result (IL activation, callup, etc.)
+  const result = String(tx.result).toLowerCase();
+  const isWin = result === "win";
+  const isRosterMove = !tx.result && tx.acquiredPlayer;
+
+  if ((isWin || isRosterMove) && tx.acquiredPlayer) {
     const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
     const exists = Object.values(state.roster).flat().some(
       (player) => normalize(player.name) === normalize(tx.acquiredPlayer)
@@ -1107,7 +1112,11 @@ function applyTransactionToRoster(tx) {
 function reverseTransactionFromRoster(tx) {
   if (!tx) return;
 
-  if (String(tx.result).toLowerCase() === "win" && tx.acquiredPlayer) {
+  const reverseResult = String(tx.result).toLowerCase();
+  const wasWin = reverseResult === "win";
+  const wasRosterMove = !tx.result && tx.acquiredPlayer;
+
+  if ((wasWin || wasRosterMove) && tx.acquiredPlayer) {
     for (const group of Object.keys(state.roster)) {
       state.roster[group] = state.roster[group].filter(
         (player) => normalize(player.name) !== normalize(tx.acquiredPlayer)
@@ -1133,7 +1142,11 @@ function rebuildRosterWithoutTransaction(excludedId) {
       }
     }
 
-    if (String(tx.result).toLowerCase() === "win" && tx.acquiredPlayer) {
+    const result2 = String(tx.result).toLowerCase();
+    const isWin2 = result2 === "win";
+    const isRosterMove2 = !tx.result && tx.acquiredPlayer;
+
+    if ((isWin2 || isRosterMove2) && tx.acquiredPlayer) {
       const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
       const exists = Object.values(roster).flat().some(
         (player) => normalize(player.name) === normalize(tx.acquiredPlayer)
