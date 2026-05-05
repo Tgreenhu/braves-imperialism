@@ -696,8 +696,23 @@ function getStatsForDepthChart(player, role) {
   return [];
 }
 
-function renderStatPills(stats) {
+function renderStatPills(stats, mode) {
   if (!stats.length) return "";
+
+  if (mode === "hitter") {
+    // AVG/OBP/SLG shown as slash line, OPS separate
+    const slash = stats.filter((s) => ["AVG","OBP","SLG"].includes(s.label));
+    const ops   = stats.filter((s) => s.label === "OPS");
+    const slashHtml = slash.length
+      ? `<span class="stat-pill"><span class="stat-pill-value">${slash.map((s) => escapeHtml(s.value)).join('<span class="stat-slash">/</span>')}</span></span>`
+      : "";
+    const opsHtml = ops.length
+      ? `<span class="stat-pill"><span class="stat-pill-value">${escapeHtml(ops[0].value)}</span></span>`
+      : "";
+    return `<div class="stat-pill-row">${slashHtml}${opsHtml}</div>`;
+  }
+
+  // Pitchers: show label + value as before
   return `<div class="stat-pill-row">${stats.map((s) =>
     `<span class="stat-pill"><span class="stat-pill-label">${escapeHtml(s.label)}</span><span class="stat-pill-value">${escapeHtml(s.value)}</span></span>`
   ).join("")}</div>`;
@@ -718,20 +733,16 @@ function renderDepthChart() {
   document.getElementById("rotationList").innerHTML = state.roster.rotation.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name-line">
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
-        ${renderStatPills(getStatsForDepthChart(p, "starter"))}
-      </div>
+      <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
+      ${renderStatPills(getStatsForDepthChart(p, "starter"), "pitcher")}
     </div>
   `).join("");
 
   document.getElementById("bullpenList").innerHTML = state.roster.bullpen.map((p) => `
     <div class="staff-row">
       <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name-line">
-        <div class="row-name" title="${escapeAttr(p.name)}">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
-        ${renderStatPills(getStatsForDepthChart(p, "bullpen"))}
-      </div>
+      <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
+      ${renderStatPills(getStatsForDepthChart(p, "bullpen"), "pitcher")}
     </div>
   `).join("");
 
@@ -747,10 +758,8 @@ function renderPositionBox(pos, players, maxVisible) {
     ${visible.map((player) => `
       <div class="depth-row">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
-        <div class="row-name-line">
-          <div class="row-name" title="${escapeAttr(player.name)}">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
-          ${renderStatPills(getStatsForDepthChart(player, "hitter"))}
-        </div>
+        <div class="row-name">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
+        ${renderStatPills(getStatsForDepthChart(player, "hitter"), "hitter")}
       </div>
     `).join("")}
     ${extra > 0 ? `<div class="pos-more">+${extra} more</div>` : ""}
