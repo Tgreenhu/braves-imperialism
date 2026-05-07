@@ -34,6 +34,7 @@ const DEFAULT_BOX_LAYOUT = {
 };
 
 const rosterMeta = {
+  il: "Injured List",
   lineup: "Starting 8",
   bench: "Bench",
   rotation: "Rotation",
@@ -99,6 +100,7 @@ function makePlayer(name, primaryPos, secondaryPositions = [], isProtected = fal
 
 const defaultState = {
   roster: {
+    il: [],
     lineup: [
       makePlayer("Drake Baldwin", "C"),
       makePlayer("Matt Olson", "1B"),
@@ -220,7 +222,9 @@ function loadLocalState() {
 function normalizeRoster(roster) {
   const normalized = deepClone(defaultState.roster);
 
-  for (const group of Object.keys(normalized)) {
+  // Include il group even if not in defaultState keys
+  const allGroups = new Set([...Object.keys(normalized), "il"]);
+  for (const group of allGroups) {
     if (Array.isArray(roster[group])) {
       normalized[group] = roster[group].map((p) => ({
         id: p.id || makeId(),
@@ -240,12 +244,14 @@ function normalizeTransactions(transactions) {
     id: tx.id || makeId(),
     createdAt: typeof tx.createdAt === "number" ? tx.createdAt : Date.now() + index,
     date: tx.date || "",
+    txType: tx.txType || "game",
     opponent: tx.opponent || "",
     result: tx.result || "",
     acquiredPlayer: tx.acquiredPlayer || "",
     acquiredSlot: tx.acquiredSlot || "",
     acquiredGroup: tx.acquiredGroup || "",
     removedPlayer: tx.removedPlayer || "",
+    removedAction: tx.removedAction || "",
     notes: tx.notes || ""
   }));
 }
@@ -528,6 +534,7 @@ function bindTransactionForm() {
   document.getElementById("txAcquiredSlot").addEventListener("change", (e) => {
     document.getElementById("txAcquiredGroup").value = inferGroupFromPrimaryPos(e.target.value);
   });
+  document.getElementById("txType").addEventListener("change", updateTxFormUI);
 }
 
 function bindDownload() {
@@ -601,6 +608,7 @@ function renderAll() {
   ensurePlayerHistory();
   renderCounts();
   renderDepthChart();
+  renderTransactionSummary();
   renderRosterEditor();
   renderTransactions();
   renderStatsTable();
@@ -648,6 +656,26 @@ function buildDepthMap() {
         seen.add(player.id);
         return true;
       });
+  });
+
+  // Append IL players to their position columns at the bottom
+  const ilPlayers = state.roster.il || [];
+  ilPlayers.forEach((player, index) => {
+    const primary = player.primaryPos;
+    const secondary = Array.isArray(player.secondaryPositions) ? player.secondaryPositions : [];
+    const ilPlayer = { ...player, isIL: true, orderKey: 9000 + index };
+
+    if (FIELD_POSITIONS.includes(primary)) {
+      map[primary].push(ilPlayer);
+    } else {
+      if (primary === "INF") ["2B", "3B", "SS"].forEach((pos) => map[pos].push(ilPlayer));
+      if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push(ilPlayer));
+      if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push(ilPlayer));
+      if (primary === "DH") map["1B"].push(ilPlayer);
+    }
+    secondary.forEach((pos) => {
+      if (FIELD_POSITIONS.includes(pos)) map[pos].push({ ...ilPlayer });
+    });
   });
 
   return map;
@@ -756,9 +784,9 @@ function renderPositionBox(pos, players, maxVisible) {
 
   target.innerHTML = `
     ${visible.map((player) => `
-      <div class="depth-row">
+      <div class="depth-row${player.isIL ? ' depth-row-il' : ''}">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
-        <div class="row-name">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
+        <div class="row-name">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}${player.isIL ? '<span class="il-badge">IL</span>' : ''}</div>
         ${renderStatPills(getStatsForDepthChart(player, "hitter"), "hitter")}
       </div>
     `).join("")}
@@ -827,25 +855,50 @@ function initDepthBoxDragging() {
 function renderRosterEditor() {
   const container = document.getElementById("rosterEditorGrid");
 
-  container.innerHTML = Object.entries(state.roster).map(([groupKey, players]) => `
-    <div class="editor-card">
-      <div class="editor-card-head">
-        <h3>${rosterMeta[groupKey]}</h3>
-        <button class="add-row-btn" data-group="${groupKey}">Add Player</button>
+  // Active roster groups in display order (il shown separately below)
+  const activeGroups = ["lineup", "bench", "rotation", "bullpen"];
+  const ilPlayers = state.roster.il || [];
+
+  container.innerHTML = activeGroups.map((groupKey) => {
+    const players = state.roster[groupKey] || [];
+    return `
+      <div class="editor-card">
+        <div class="editor-card-head">
+          <h3>${rosterMeta[groupKey]}</h3>
+          <button class="add-row-btn" data-group="${groupKey}">Add Player</button>
+        </div>
+        <div class="editor-card-body" data-group-body="${groupKey}">
+          ${players.map((player) => renderPlayerRow(player, groupKey)).join("")}
+        </div>
       </div>
-      <div class="editor-card-body" data-group-body="${groupKey}">
-        ${players.map((player) => renderPlayerRow(player, groupKey)).join("")}
+    `;
+  }).join("");
+
+  // IL box spans full width below
+  const ilHtml = `
+    <div class="editor-card il-card">
+      <div class="editor-card-head il-head">
+        <h3>🏥 Injured List</h3>
+        <span class="il-count">${ilPlayers.length} player${ilPlayers.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="editor-card-body il-body" data-group-body="il">
+        ${ilPlayers.length
+          ? ilPlayers.map((player) => renderPlayerRow(player, "il")).join("")
+          : "<div class='il-empty'>No players on the Injured List</div>"
+        }
       </div>
     </div>
-  `).join("");
+  `;
 
+  container.innerHTML += ilHtml;
   bindRosterEditorControls();
 }
 
 function renderPlayerRow(player, groupKey) {
+  const isIL = groupKey === "il";
   return `
-    <div class="player-row" draggable="true" data-group="${groupKey}" data-id="${player.id}">
-      <div class="drag-handle">⋮⋮</div>
+    <div class="player-row${isIL ? " il-player-row" : ""}" draggable="true" data-group="${groupKey}" data-id="${player.id}">
+      <div class="drag-handle">${isIL ? "🏥" : "⋮⋮"}</div>
 
       <div class="field-wrap">
         <input type="text" data-field="name" value="${escapeAttr(player.name)}" placeholder="Player" />
@@ -896,15 +949,22 @@ function bindRosterEditorControls() {
   });
 
   document.querySelectorAll(".player-row input[data-field='name']").forEach((input) => {
+    // Update name live so depth chart reflects typing
     input.addEventListener("input", (e) => {
       const row = e.target.closest(".player-row");
       const player = findRosterPlayer(row.dataset.group, row.dataset.id);
       if (!player) return;
       player.name = e.target.value;
-      rememberPlayer(player);
       renderDepthChart();
-      renderStatsTable();
       queueCloudSave();
+    });
+    // Only save to playerHistory (stats tracking) when done typing
+    input.addEventListener("blur", (e) => {
+      const row = e.target.closest(".player-row");
+      const player = findRosterPlayer(row.dataset.group, row.dataset.id);
+      if (!player || !player.name.trim()) return;
+      rememberPlayer(player);
+      renderStatsTable();
     });
   });
 
@@ -1036,24 +1096,38 @@ function defaultPrimaryPos(group) {
 
 function bindTransactionFormValues(tx = null) {
   document.getElementById("txDate").value = tx?.date || new Date().toISOString().slice(0, 10);
+  document.getElementById("txType").value = tx?.txType || "game";
   document.getElementById("txOpponent").value = tx?.opponent || "";
   document.getElementById("txResult").value = tx?.result || "";
   document.getElementById("txAcquiredPlayer").value = tx?.acquiredPlayer || "";
   document.getElementById("txAcquiredSlot").value = tx?.acquiredSlot || "";
   document.getElementById("txAcquiredGroup").value = tx?.acquiredGroup || "lineup";
   document.getElementById("txRemovedPlayer").value = tx?.removedPlayer || "";
+  document.getElementById("txRemovedAction").value = tx?.removedAction || "";
   document.getElementById("txNotes").value = tx?.notes || "";
+  updateTxFormUI();
+}
+
+function updateTxFormUI() {
+  const txType = document.getElementById("txType")?.value || "game";
+  const gameFields = document.getElementById("gameFields");
+  const ilFields = document.getElementById("ilFields");
+  if (gameFields) gameFields.style.display = txType === "game" ? "" : "none";
+  if (ilFields) ilFields.style.display = txType === "il" ? "" : "none";
 }
 
 function saveTransactionFromForm() {
+  const txType = document.getElementById("txType").value || "game";
   const tx = {
     date: document.getElementById("txDate").value,
-    opponent: document.getElementById("txOpponent").value.trim(),
-    result: document.getElementById("txResult").value,
+    txType,
+    opponent: txType === "game" ? document.getElementById("txOpponent").value.trim() : "",
+    result: txType === "game" ? document.getElementById("txResult").value : "",
     acquiredPlayer: document.getElementById("txAcquiredPlayer").value.trim(),
     acquiredSlot: document.getElementById("txAcquiredSlot").value,
     acquiredGroup: document.getElementById("txAcquiredGroup").value,
     removedPlayer: document.getElementById("txRemovedPlayer").value.trim(),
+    removedAction: txType === "il" ? document.getElementById("txRemovedAction").value : "",
     notes: document.getElementById("txNotes").value.trim()
   };
 
@@ -1091,6 +1165,67 @@ function saveTransactionFromForm() {
 }
 
 function applyTransactionToRoster(tx) {
+  if (tx.txType === "il") {
+    // IL transaction logic
+    if (tx.removedPlayer) {
+      const removedAction = String(tx.removedAction || "").toLowerCase();
+      if (removedAction === "dfa") {
+        // DFA: remove entirely from all groups
+        for (const group of Object.keys(state.roster)) {
+          state.roster[group] = state.roster[group].filter(
+            (player) => normalize(player.name) !== normalize(tx.removedPlayer)
+          );
+        }
+      } else if (removedAction === "il") {
+        // Send to IL: move from active groups to il
+        let movedPlayer = null;
+        for (const group of ["lineup", "bench", "rotation", "bullpen"]) {
+          const idx = state.roster[group].findIndex((p) => normalize(p.name) === normalize(tx.removedPlayer));
+          if (idx !== -1) {
+            movedPlayer = state.roster[group].splice(idx, 1)[0];
+            break;
+          }
+        }
+        if (movedPlayer) {
+          if (!state.roster.il) state.roster.il = [];
+          state.roster.il.push(movedPlayer);
+        }
+      } else {
+        // Generic remove (no specific action)
+        for (const group of Object.keys(state.roster)) {
+          state.roster[group] = state.roster[group].filter(
+            (player) => normalize(player.name) !== normalize(tx.removedPlayer)
+          );
+        }
+      }
+    }
+
+    if (tx.acquiredPlayer) {
+      // Activate from IL: move from IL to bench (or specified group)
+      const ilIdx = (state.roster.il || []).findIndex((p) => normalize(p.name) === normalize(tx.acquiredPlayer));
+      if (ilIdx !== -1) {
+        const activated = state.roster.il.splice(ilIdx, 1)[0];
+        const group = tx.acquiredGroup || "bench";
+        if (!state.roster[group]) state.roster[group] = [];
+        state.roster[group].push(activated);
+      } else {
+        // New player being added
+        const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
+        const exists = Object.values(state.roster).flat().some(
+          (player) => normalize(player.name) === normalize(tx.acquiredPlayer)
+        );
+        if (!exists) {
+          const player = makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group), [], false);
+          if (!state.roster[group]) state.roster[group] = [];
+          state.roster[group].push(player);
+          rememberPlayer(player);
+        }
+      }
+    }
+    return;
+  }
+
+  // Game transaction logic (original)
   if (tx.removedPlayer) {
     for (const group of Object.keys(state.roster)) {
       state.roster[group] = state.roster[group].filter(
@@ -1099,7 +1234,6 @@ function applyTransactionToRoster(tx) {
     }
   }
 
-  // Add player on a win, OR on any roster move with no result (IL activation, callup, etc.)
   const result = String(tx.result).toLowerCase();
   const isWin = result === "win";
   const isRosterMove = !tx.result && tx.acquiredPlayer;
@@ -1139,10 +1273,46 @@ function reverseTransactionFromRoster(tx) {
 }
 
 function rebuildRosterWithoutTransaction(excludedId) {
-  const roster = deepClone(defaultState.roster);
+  const roster = { ...deepClone(defaultState.roster), il: [] };
   const sorted = getTransactionsChronological().filter((t) => excludedId ? t.id !== excludedId : true);
 
   for (const tx of sorted) {
+    if (tx.txType === "il") {
+      if (tx.removedPlayer) {
+        const removedAction = String(tx.removedAction || "").toLowerCase();
+        if (removedAction === "dfa") {
+          for (const group of Object.keys(roster)) {
+            roster[group] = roster[group].filter((p) => normalize(p.name) !== normalize(tx.removedPlayer));
+          }
+        } else if (removedAction === "il") {
+          let moved = null;
+          for (const group of ["lineup", "bench", "rotation", "bullpen"]) {
+            const idx = roster[group].findIndex((p) => normalize(p.name) === normalize(tx.removedPlayer));
+            if (idx !== -1) { moved = roster[group].splice(idx, 1)[0]; break; }
+          }
+          if (moved) roster.il.push(moved);
+        } else {
+          for (const group of Object.keys(roster)) {
+            roster[group] = roster[group].filter((p) => normalize(p.name) !== normalize(tx.removedPlayer));
+          }
+        }
+      }
+      if (tx.acquiredPlayer) {
+        const ilIdx = roster.il.findIndex((p) => normalize(p.name) === normalize(tx.acquiredPlayer));
+        if (ilIdx !== -1) {
+          const activated = roster.il.splice(ilIdx, 1)[0];
+          const group = tx.acquiredGroup || "bench";
+          if (!roster[group]) roster[group] = [];
+          roster[group].push(activated);
+        } else {
+          const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
+          if (!roster[group]) roster[group] = [];
+          roster[group].push(makePlayer(tx.acquiredPlayer, tx.acquiredSlot || defaultPrimaryPos(group), [], false));
+        }
+      }
+      continue;
+    }
+
     if (tx.removedPlayer) {
       for (const group of Object.keys(roster)) {
         roster[group] = roster[group].filter(
@@ -1184,6 +1354,37 @@ function getTransactionsForDisplay() {
     if (byDate !== 0) return byDate;
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
+}
+
+function renderTransactionSummary() {
+  const container = document.getElementById("txSummaryBox");
+  if (!container) return;
+
+  const txs = getTransactionsChronological();
+  const adds = txs.filter((t) => String(t.result).toLowerCase() === "win" && t.acquiredPlayer);
+  const losses = txs.filter((t) => String(t.result).toLowerCase() === "loss" && t.removedPlayer);
+
+  const addsHtml = adds.length
+    ? adds.map((t) => `<div class="tx-summary-row"><span class="tx-summary-name">${escapeHtml(t.acquiredPlayer)}</span> <span class="tx-summary-arrow">${escapeHtml(t.opponent)} → Braves</span></div>`).join("")
+    : "<div class='tx-summary-empty'>No acquisitions yet</div>";
+
+  const lossesHtml = losses.length
+    ? losses.map((t) => `<div class="tx-summary-row"><span class="tx-summary-name">${escapeHtml(t.removedPlayer)}</span> <span class="tx-summary-arrow">Braves → ${escapeHtml(t.opponent)}</span></div>`).join("")
+    : "<div class='tx-summary-empty'>No losses yet</div>";
+
+  container.innerHTML = `
+    <div class="tx-summary-panel">
+      <div class="tx-summary-col">
+        <div class="tx-summary-header adds-header">⬆ ADDED</div>
+        <div class="tx-summary-list">${addsHtml}</div>
+      </div>
+      <div class="tx-summary-divider"></div>
+      <div class="tx-summary-col">
+        <div class="tx-summary-header lost-header">⬇ LOST</div>
+        <div class="tx-summary-list">${lossesHtml}</div>
+      </div>
+    </div>
+  `;
 }
 
 function renderTransactions() {
