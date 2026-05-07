@@ -758,21 +758,27 @@ function renderDepthChart() {
   renderPositionBox("1B", map["1B"], 4);
   renderPositionBox("C", map.C, 3);
 
-  document.getElementById("rotationList").innerHTML = state.roster.rotation.map((p) => `
-    <div class="staff-row">
-      <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
-      ${renderStatPills(getStatsForDepthChart(p, "starter"), "pitcher")}
-    </div>
-  `).join("");
+  const ilPlayers = state.roster.il || [];
+  const ilRotation = ilPlayers.filter((p) => PITCHER_PRIMARY_POSITIONS.has(String(p.primaryPos).toUpperCase()) && String(p.primaryPos).toUpperCase().startsWith("SP"));
+  const ilBullpen  = ilPlayers.filter((p) => PITCHER_PRIMARY_POSITIONS.has(String(p.primaryPos).toUpperCase()) && !String(p.primaryPos).toUpperCase().startsWith("SP"));
 
-  document.getElementById("bullpenList").innerHTML = state.roster.bullpen.map((p) => `
-    <div class="staff-row">
-      <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
-      <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
-      ${renderStatPills(getStatsForDepthChart(p, "bullpen"), "pitcher")}
-    </div>
-  `).join("");
+  function staffRow(p, role, isIL = false) {
+    return `
+      <div class="staff-row${isIL ? ' depth-row-il' : ''}">
+        <div class="row-pos">${escapeHtml(p.primaryPos)}</div>
+        <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}${isIL ? '<span class="il-badge">IL</span>' : ''}</div>
+        ${renderStatPills(getStatsForDepthChart(p, role), "pitcher")}
+      </div>
+    `;
+  }
+
+  document.getElementById("rotationList").innerHTML =
+    state.roster.rotation.map((p) => staffRow(p, "starter")).join("") +
+    ilRotation.map((p) => staffRow(p, "starter", true)).join("");
+
+  document.getElementById("bullpenList").innerHTML =
+    state.roster.bullpen.map((p) => staffRow(p, "bullpen")).join("") +
+    ilBullpen.map((p) => staffRow(p, "bullpen", true)).join("");
 
   applyDepthBoxPositions();
 }
