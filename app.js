@@ -142,6 +142,7 @@ const defaultState = {
 };
 
 let state = loadLocalState();
+if (!Array.isArray(state.roster.il)) state.roster.il = [];
 ensurePlayerHistory();
 
 let editingTransactionId = null;
@@ -275,8 +276,38 @@ function normalizePlayerHistory(history) {
   }));
 }
 
+function cleanPlayerHistory() {
+  if (!Array.isArray(state.playerHistory)) return;
+  // Build set of all real full names (from roster + transactions)
+  const realNames = new Set();
+  for (const player of Object.values(state.roster).flat()) {
+    const n = normalize(player.name);
+    if (n && n.length >= 2) realNames.add(n);
+  }
+  for (const tx of state.transactions) {
+    const n = normalize(tx.acquiredPlayer || "");
+    if (n && n.length >= 2) realNames.add(n);
+    const r = normalize(tx.removedPlayer || "");
+    if (r && r.length >= 2) realNames.add(r);
+  }
+  // Remove history entries that are not a real name and look like partial typing
+  // (i.e. some real name starts with this entry — it's a prefix artifact)
+  state.playerHistory = state.playerHistory.filter((p) => {
+    const n = normalize(p.name);
+    if (!n || n.length < 2) return false;
+    // Keep if it IS a real name
+    if (realNames.has(n)) return true;
+    // Remove if any real name starts with it (it's a partial-typing artifact)
+    for (const real of realNames) {
+      if (real.startsWith(n) && real !== n) return false;
+    }
+    return true;
+  });
+}
+
 function ensurePlayerHistory() {
   if (!Array.isArray(state.playerHistory)) state.playerHistory = [];
+  cleanPlayerHistory();
   const seen = new Set(state.playerHistory.map((p) => normalize(p.name)));
 
   for (const player of Object.values(state.roster).flat()) {
@@ -414,6 +445,7 @@ async function loadStateFromSupabase() {
         boxLayout: normalizeBoxLayout(data.data.boxLayout || DEFAULT_BOX_LAYOUT),
         playerHistory: normalizePlayerHistory(data.data.playerHistory || [])
       };
+      if (!Array.isArray(state.roster.il)) state.roster.il = [];
       ensurePlayerHistory();
       saveLocalState();
       setSyncStatus("Sync: loaded");
@@ -1182,6 +1214,7 @@ function saveTransactionFromForm() {
 
 function applyTransactionToRoster(tx) {
   if (tx.txType === "il") {
+    if (!Array.isArray(state.roster.il)) state.roster.il = [];
     // IL transaction logic
     if (tx.removedPlayer) {
       const removedAction = String(tx.removedAction || "").toLowerCase();
