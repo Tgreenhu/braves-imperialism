@@ -127,6 +127,8 @@
             </div>
           </div>
         </div>
+
+        <div id="txSummaryBox" class="tx-summary-box"></div>
       </section>
 
       <section class="tab-panel" id="tab-roster">
@@ -164,22 +166,42 @@
             </label>
 
             <label>
-              <span>Opponent</span>
-              <input type="text" id="txOpponent" placeholder="Phillies" />
-            </label>
-
-            <label>
-              <span>Result</span>
-              <select id="txResult">
-                <option value="">Select result</option>
-                <option value="Win">Win</option>
-                <option value="Loss">Loss</option>
-                <option value="Tie">Tie</option>
+              <span>Transaction Type</span>
+              <select id="txType">
+                <option value="game">Game Result</option>
+                <option value="il">IL / Roster Move</option>
               </select>
             </label>
 
+            <div id="gameFields">
+              <label>
+                <span>Opponent</span>
+                <input type="text" id="txOpponent" placeholder="Phillies" />
+              </label>
+
+              <label>
+                <span>Result</span>
+                <select id="txResult">
+                  <option value="">Select result</option>
+                  <option value="Win">Win</option>
+                  <option value="Loss">Loss</option>
+                  <option value="Tie">Tie</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="ilFields" style="display:none;">
+              <label>
+                <span>Move Type</span>
+                <select id="txRemovedAction">
+                  <option value="il">Send to IL</option>
+                  <option value="dfa">DFA (removes from team)</option>
+                </select>
+              </label>
+            </div>
+
             <label>
-              <span>Acquired Player</span>
+              <span>Activated / Acquired Player</span>
               <input type="text" id="txAcquiredPlayer" placeholder="Bobby Witt Jr." />
             </label>
 
@@ -199,13 +221,13 @@
             </label>
 
             <label>
-              <span>Removed Player</span>
+              <span>Removed / Sent to IL Player</span>
               <input type="text" id="txRemovedPlayer" placeholder="Kyle Farmer" />
             </label>
 
             <label class="notes-field">
               <span>Notes</span>
-              <textarea id="txNotes" rows="4" placeholder="Installed Bobby Witt Jr. at shortstop."></textarea>
+              <textarea id="txNotes" rows="4" placeholder="Activated Acuña from IL, sent Smith to IL."></textarea>
             </label>
           </div>
 
