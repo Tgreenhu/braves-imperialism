@@ -1115,6 +1115,156 @@ input, select, textarea { color: var(--text); }
   color: var(--white);
 }
 
+/* ── IL STYLES ── */
+
+.il-badge {
+  display: inline-block;
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 4px;
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+.depth-row-il .row-name {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.depth-row-il .row-pos {
+  opacity: 0.55;
+}
+
+.il-card {
+  grid-column: 1 / -1;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.il-head {
+  background: linear-gradient(180deg, #1a0a0a 0%, #2d0f0f 100%) !important;
+  color: #f87171 !important;
+}
+
+.il-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f87171;
+  opacity: 0.7;
+}
+
+.il-body {
+  min-height: 48px;
+}
+
+.il-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+  font-style: italic;
+}
+
+.il-player-row {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  background: linear-gradient(180deg, rgba(60, 10, 10, 0.5) 0%, rgba(40, 8, 8, 0.6) 100%) !important;
+}
+
+/* ── TRANSACTION SUMMARY BOX ── */
+
+.tx-summary-box {
+  margin-top: 20px;
+  width: min(100%, 1080px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tx-summary-panel {
+  display: flex;
+  gap: 0;
+  background: rgba(8, 17, 31, 0.84);
+  border: 1px solid rgba(74, 98, 136, 0.48);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+}
+
+.tx-summary-col {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+}
+
+.tx-summary-divider {
+  width: 1px;
+  background: rgba(74, 98, 136, 0.4);
+  flex-shrink: 0;
+}
+
+.tx-summary-header {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.adds-header { color: #4ade80; }
+.lost-header { color: #f87171; }
+
+.tx-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.tx-summary-row {
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.tx-summary-name {
+  font-weight: 700;
+  color: #f0f6ff;
+}
+
+.tx-summary-arrow {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tx-summary-empty {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ── IL FORM FIELDS ── */
+
+#gameFields,
+#ilFields {
+  display: contents;
+}
+
+#gameFields label,
+#ilFields label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 1100px) {
   .editor-grid { grid-template-columns: 1fr; }
   .app-hero { flex-direction: column; }
