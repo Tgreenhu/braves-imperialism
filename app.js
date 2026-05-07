@@ -779,18 +779,28 @@ function renderDepthChart() {
 
 function renderPositionBox(pos, players, maxVisible) {
   const target = document.getElementById(`box-${pos}`);
-  const visible = players.slice(0, maxVisible);
-  const extra = Math.max(0, players.length - maxVisible);
+  // Active players respect maxVisible; IL players always show at bottom
+  const active = players.filter((p) => !p.isIL);
+  const ilOnly = players.filter((p) => p.isIL);
+  const visibleActive = active.slice(0, maxVisible);
+  const extra = Math.max(0, active.length - maxVisible);
 
   target.innerHTML = `
-    ${visible.map((player) => `
-      <div class="depth-row${player.isIL ? ' depth-row-il' : ''}">
+    ${visibleActive.map((player) => `
+      <div class="depth-row">
         <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
-        <div class="row-name">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}${player.isIL ? '<span class="il-badge">IL</span>' : ''}</div>
+        <div class="row-name">${escapeHtml(player.name)}${player.isProtected ? '<span class="protected-star">★</span>' : ''}</div>
         ${renderStatPills(getStatsForDepthChart(player, "hitter"), "hitter")}
       </div>
     `).join("")}
     ${extra > 0 ? `<div class="pos-more">+${extra} more</div>` : ""}
+    ${ilOnly.map((player) => `
+      <div class="depth-row depth-row-il">
+        <div class="row-pos">${escapeHtml(player.primaryPos)}</div>
+        <div class="row-name">${escapeHtml(player.name)}<span class="il-badge">IL</span></div>
+        ${renderStatPills(getStatsForDepthChart(player, "hitter"), "hitter")}
+      </div>
+    `).join("")}
   `;
 }
 
@@ -1236,10 +1246,12 @@ function applyTransactionToRoster(tx) {
 
   const result = String(tx.result).toLowerCase();
   const isWin = result === "win";
+  const isLoss = result === "loss";
   const isRosterMove = !tx.result && tx.acquiredPlayer;
 
-  if ((isWin || isRosterMove) && tx.acquiredPlayer) {
-    const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
+  if ((isWin || isLoss || isRosterMove) && tx.acquiredPlayer) {
+    // Wins: use specified group. Losses: backfill always goes to bench.
+    const group = isLoss ? "bench" : (tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot));
     const exists = Object.values(state.roster).flat().some(
       (player) => normalize(player.name) === normalize(tx.acquiredPlayer)
     );
@@ -1323,10 +1335,11 @@ function rebuildRosterWithoutTransaction(excludedId) {
 
     const result2 = String(tx.result).toLowerCase();
     const isWin2 = result2 === "win";
+    const isLoss2 = result2 === "loss";
     const isRosterMove2 = !tx.result && tx.acquiredPlayer;
 
-    if ((isWin2 || isRosterMove2) && tx.acquiredPlayer) {
-      const group = tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot);
+    if ((isWin2 || isLoss2 || isRosterMove2) && tx.acquiredPlayer) {
+      const group = isLoss2 ? "bench" : (tx.acquiredGroup || inferGroupFromPrimaryPos(tx.acquiredSlot));
       const exists = Object.values(roster).flat().some(
         (player) => normalize(player.name) === normalize(tx.acquiredPlayer)
       );
