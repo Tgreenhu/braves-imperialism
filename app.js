@@ -671,7 +671,6 @@ function buildDepthMap() {
       if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
       if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
       if (primary === "DH") {
-        map["1B"].push({ ...player, orderKey: index + 1000 });
         map["DH"].push({ ...player, orderKey: index });
       }
     }
@@ -681,6 +680,14 @@ function buildDepthMap() {
         map[pos].push({ ...player, orderKey: index + 1000 });
       }
     });
+  });
+
+  // All hitters back up DH (bench players fill in order after primary DH)
+  hitters.forEach((player, index) => {
+    const primary = player.primaryPos;
+    if (primary !== "DH") {
+      map["DH"].push({ ...player, orderKey: index + 500 });
+    }
   });
 
   Object.keys(map).forEach((key) => {
@@ -708,7 +715,6 @@ function buildDepthMap() {
       if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push(ilPlayer));
       if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push(ilPlayer));
       if (primary === "DH") {
-        map["1B"].push(ilPlayer);
         map["DH"].push({ ...ilPlayer });
       }
     }
@@ -796,7 +802,7 @@ function renderDepthChart() {
   renderPositionBox("2B", map["2B"], 4);
   renderPositionBox("1B", map["1B"], 4);
   renderPositionBox("C", map.C, 3);
-  renderPositionBox("DH", map.DH, 2);
+  renderPositionBox("DH", map.DH, 10);
 
   const ilPlayers = state.roster.il || [];
   const ilRotation = ilPlayers.filter((p) => PITCHER_PRIMARY_POSITIONS.has(String(p.primaryPos).toUpperCase()) && String(p.primaryPos).toUpperCase().startsWith("SP"));
