@@ -682,12 +682,9 @@ function buildDepthMap() {
     });
   });
 
-  // All hitters back up DH (bench players fill in order after primary DH)
-  hitters.forEach((player, index) => {
-    const primary = player.primaryPos;
-    if (primary !== "DH") {
-      map["DH"].push({ ...player, orderKey: index + 500 });
-    }
+  // Only bench players back up DH, in bench order
+  state.roster.bench.forEach((player, index) => {
+    map["DH"].push({ ...player, orderKey: index + 500 });
   });
 
   Object.keys(map).forEach((key) => {
