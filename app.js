@@ -29,6 +29,7 @@ const DEFAULT_BOX_LAYOUT = {
   "2B": { x: 624, y: 382 },
   "1B": { x: 838, y: 482 },
   C: { x: 390, y: 876 },
+  DH: { x: 650, y: 876 },
   BULLPEN: { x: 34, y: 702 },
   ROTATION: { x: 726, y: 702 }
 };
@@ -654,7 +655,7 @@ function renderCounts() {
 
 function buildDepthMap() {
   const map = {
-    C: [], "1B": [], "2B": [], "3B": [], SS: [], LF: [], CF: [], RF: []
+    C: [], "1B": [], "2B": [], "3B": [], SS: [], LF: [], CF: [], RF: [], DH: []
   };
 
   const hitters = [...state.roster.lineup, ...state.roster.bench];
@@ -669,7 +670,10 @@ function buildDepthMap() {
       if (primary === "INF") ["2B", "3B", "SS"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
       if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
       if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push({ ...player, orderKey: index + 1000 }));
-      if (primary === "DH") map["1B"].push({ ...player, orderKey: index + 1000 });
+      if (primary === "DH") {
+        map["1B"].push({ ...player, orderKey: index + 1000 });
+        map["DH"].push({ ...player, orderKey: index });
+      }
     }
 
     secondary.forEach((pos) => {
@@ -703,7 +707,10 @@ function buildDepthMap() {
       if (primary === "INF") ["2B", "3B", "SS"].forEach((pos) => map[pos].push(ilPlayer));
       if (primary === "OF") ["LF", "CF", "RF"].forEach((pos) => map[pos].push(ilPlayer));
       if (primary === "UTIL") ["1B", "2B", "3B", "SS"].forEach((pos) => map[pos].push(ilPlayer));
-      if (primary === "DH") map["1B"].push(ilPlayer);
+      if (primary === "DH") {
+        map["1B"].push(ilPlayer);
+        map["DH"].push({ ...ilPlayer });
+      }
     }
     secondary.forEach((pos) => {
       if (FIELD_POSITIONS.includes(pos)) map[pos].push({ ...ilPlayer });
@@ -789,6 +796,7 @@ function renderDepthChart() {
   renderPositionBox("2B", map["2B"], 4);
   renderPositionBox("1B", map["1B"], 4);
   renderPositionBox("C", map.C, 3);
+  renderPositionBox("DH", map.DH, 2);
 
   const ilPlayers = state.roster.il || [];
   const ilRotation = ilPlayers.filter((p) => PITCHER_PRIMARY_POSITIONS.has(String(p.primaryPos).toUpperCase()) && String(p.primaryPos).toUpperCase().startsWith("SP"));
