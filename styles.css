@@ -1117,6 +1117,29 @@ input, select, textarea { color: var(--text); }
 
 /* ── IL STYLES ── */
 
+.two-way-badge {
+  display: inline-block;
+  background: rgba(234, 170, 0, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(234, 170, 0, 0.35);
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 4px;
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+.two-way-row .row-pos {
+  color: #ff6b8c;
+}
+
+.secondary-pill-sp span {
+  color: #ff6b8c;
+  font-weight: 800;
+}
+
 .il-badge {
   display: inline-block;
   background: rgba(239, 68, 68, 0.18);
