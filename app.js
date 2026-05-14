@@ -728,7 +728,14 @@ function getStatsForDepthChart(player, role) {
   const normalizedName = normalize(player.name);
   if (!normalizedName || !statsView.length) return [];
 
-  const row = statsView.find((r) => normalize(r.name) === normalizedName);
+  // For pitching roles, prefer a pitcher-type row (handles two-way players like Ohtani)
+  const isPitchingRole = (role === "starter" || role === "bullpen");
+  const row = isPitchingRole
+    ? (statsView.find((r) => normalize(r.name) === normalizedName && r.type === "pitcher")
+       || statsView.find((r) => normalize(r.name) === normalizedName))
+    : (statsView.find((r) => normalize(r.name) === normalizedName && r.type === "hitter")
+       || statsView.find((r) => normalize(r.name) === normalizedName));
+
   if (!row) return [];
 
   function s(label, key) {
@@ -1778,8 +1785,31 @@ async function refreshStats() {
 
     const history = [...state.playerHistory].filter((p) => normalize(p.name));
     const rows = [];
+
+    // Build a set of two-way player names (hitters with SP secondary position)
+    const twoWayNames = new Set(
+      [...state.roster.lineup, ...state.roster.bench]
+        .filter((p) => Array.isArray(p.secondaryPositions) && p.secondaryPositions.includes("SP"))
+        .map((p) => normalize(p.name))
+    );
+
     for (const player of history) {
       rows.push(await fetchPlayerSeasonStats(player));
+      // For two-way players, also fetch pitcher stats as a second row
+      if (twoWayNames.has(normalize(player.name)) && player.mlbId) {
+        const pitcherVersion = { ...player, primaryPos: "SP1" };
+        const cacheKey = `${player.mlbId}-pitcher`;
+        if (!statsCache.has(cacheKey)) {
+          const group = "pitching";
+          const data = await fetchJson(`${MLB_API_BASE}/people/${player.mlbId}/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&hydrate=currentTeam`);
+          const stat = extractStatSplit(data);
+          const personData = data?.people?.[0] || {};
+          const teamName = personData?.currentTeam?.abbreviation || personData?.currentTeam?.name || "";
+          const pitcherRow = buildPitcherRow(pitcherVersion, stat, teamName);
+          statsCache.set(cacheKey, pitcherRow);
+        }
+        rows.push(statsCache.get(cacheKey));
+      }
     }
 
     statsView = rows;
