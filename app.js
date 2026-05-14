@@ -815,8 +815,25 @@ function renderDepthChart() {
     `;
   }
 
+  // Two-way players: hitters with SP as a secondary position
+  const allHitters = [...state.roster.lineup, ...state.roster.bench];
+  const twoWayPitchers = allHitters.filter((p) =>
+    Array.isArray(p.secondaryPositions) && p.secondaryPositions.includes("SP")
+  );
+
+  function twoWayRow(p) {
+    return `
+      <div class="staff-row two-way-row">
+        <div class="row-pos">SP</div>
+        <div class="row-name">${escapeHtml(p.name)}${p.isProtected ? '<span class="protected-star">★</span>' : ''}<span class="two-way-badge">2W</span></div>
+        ${renderStatPills(getStatsForDepthChart(p, "starter"), "pitcher")}
+      </div>
+    `;
+  }
+
   document.getElementById("rotationList").innerHTML =
     state.roster.rotation.map((p) => staffRow(p, "starter")).join("") +
+    twoWayPitchers.map((p) => twoWayRow(p)).join("") +
     ilRotation.map((p) => staffRow(p, "starter", true)).join("");
 
   document.getElementById("bullpenList").innerHTML =
@@ -979,6 +996,10 @@ function renderPlayerRow(player, groupKey) {
               <span>${pos}</span>
             </label>
           `).join("")}
+          <label class="secondary-pill secondary-pill-sp">
+            <input type="checkbox" data-secondary="SP" ${player.secondaryPositions.includes("SP") ? "checked" : ""} />
+            <span>SP</span>
+          </label>
         </div>
       </div>
 
