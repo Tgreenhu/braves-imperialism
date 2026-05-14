@@ -1777,6 +1777,21 @@ async function refreshStats() {
   setStatsStatus("Refreshing stats...");
   try {
     ensurePlayerHistory();
+
+    // Clear cache for two-way players so both hitter and pitcher rows get re-fetched
+    const twoWayRosterNames = new Set(
+      [...state.roster.lineup, ...state.roster.bench]
+        .filter((p) => Array.isArray(p.secondaryPositions) && p.secondaryPositions.includes("SP"))
+        .map((p) => normalize(p.name))
+    );
+    const twoWayHistory = state.playerHistory.filter((p) => twoWayRosterNames.has(normalize(p.name)));
+    for (const p of twoWayHistory) {
+      if (p.mlbId) {
+        statsCache.delete(`${p.mlbId}-hitter`);
+        statsCache.delete(`${p.mlbId}-pitcher`);
+      }
+    }
+
     await ensureStatsDirectory();
     await ensureRealAtlIds();
     await ensureMlbTeamStats("hitters");
@@ -1796,19 +1811,14 @@ async function refreshStats() {
     for (const player of history) {
       rows.push(await fetchPlayerSeasonStats(player));
       // For two-way players, also fetch pitcher stats as a second row
+      // Pass a fake player object with SP1 as primaryPos so historyTypeForPlayer returns "pitcher"
       if (twoWayNames.has(normalize(player.name)) && player.mlbId) {
         const pitcherVersion = { ...player, primaryPos: "SP1" };
-        const cacheKey = `${player.mlbId}-pitcher`;
-        if (!statsCache.has(cacheKey)) {
-          const group = "pitching";
-          const data = await fetchJson(`${MLB_API_BASE}/people/${player.mlbId}/stats?stats=season&group=${group}&season=${CURRENT_SEASON}&hydrate=currentTeam`);
-          const stat = extractStatSplit(data);
-          const personData = data?.people?.[0] || {};
-          const teamName = personData?.currentTeam?.abbreviation || personData?.currentTeam?.name || "";
-          const pitcherRow = buildPitcherRow(pitcherVersion, stat, teamName);
-          statsCache.set(cacheKey, pitcherRow);
+        const pitcherRow = await fetchPlayerSeasonStats(pitcherVersion);
+        // Only add if we got real pitching stats (ERA or IP present)
+        if (pitcherRow && (pitcherRow.ERA || pitcherRow.IP !== "0.0")) {
+          rows.push(pitcherRow);
         }
-        rows.push(statsCache.get(cacheKey));
       }
     }
 
